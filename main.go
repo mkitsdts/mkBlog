@@ -1,9 +1,9 @@
 package main
 
 import (
-	_ "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-
+	routers := gin.Default()
 }
