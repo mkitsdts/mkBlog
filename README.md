@@ -61,12 +61,6 @@ mkBlog  - internal
         |
 
         |
-        
-        - post
-
-        |
-
-        |
 
         - client
 
