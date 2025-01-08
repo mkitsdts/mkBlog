@@ -10,6 +10,12 @@
 
 Redis用于缓存文章内容，RabbitMQ用于缓存用户请求，MySQL用于存储文章内容
 
+使用到的标准库包有：
+
+* slog          日志库
+
+
+
 使用到的第三方包有：
 
 * gin           Web框架
@@ -39,15 +45,30 @@ Redis用于缓存文章内容，RabbitMQ用于缓存用户请求，MySQL用于�
 根据流程设计文件架构，大致如下：
 
 mkBlog  - internal
+
         |
+
         |
+
         - models
+
         |
+
         |
+
         - package
+
         |
+
         |
+        
         - post
+
+        |
+
+        |
+
+        - client
 
 ## 状态码
 
