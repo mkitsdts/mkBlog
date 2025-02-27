@@ -1,15 +1,14 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"mkBlog/internal/routers"
+	"mkBlog/internal/database"
+	"mkBlog/internal/service"
 )
 
 func main() {
-	routers := gin.New()
-	routers.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	routers.Run(":8080")
+	database.InitDatabase()
+	service.UpdateArticle()
+	routers.InitRouter()
+	routers.Router.Run(":8080")
 }

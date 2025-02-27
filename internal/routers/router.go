@@ -2,13 +2,13 @@ package routers
 
 import (
 	"github.com/gin-gonic/gin"
+	"mkBlog/internal/handler"
 )
 
-func InitRouter(routers *gin.Engine) {
-	routers.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	routers.Run(":8080")
+var Router *gin.Engine
+
+func InitRouter() {
+	Router = gin.Default()
+	Router.GET("/", handler.HomeHandler)
+	Router.GET("/detail/:id", handler.DetailHandler)
 }
