@@ -2,7 +2,7 @@
 
 ## 介绍
 
-本项目是一个基于 Go 语言的 Gin 框架搭建的后端博客，支持 HTTP1.1, HTTP2.0, HTTPS 协议，主要用途是写一些东西记录
+本项目是一个基于 Go 语言的 Gin 框架搭建的个人博客后端及后台管理，支持 HTTP1.1, HTTPS 协议，主要用途是记录内容积累
 
 ## 技术栈
 
@@ -21,8 +21,6 @@ Redis用于缓存文章内容， Kafka 用于缓存用户请求， MySQL 用于�
 * redis         连接redis
 
 * Kafka         连接mq
-
-* fsnotify      监听项目文件的变化
 
 ## 流程
 
@@ -46,13 +44,7 @@ mkBlog  - internal
 
         |
 
-        - package
-
-        |
-
-        |
-
-        - public
+        - utils
 
 ## 状态码
 
