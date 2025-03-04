@@ -25,14 +25,11 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 	for scanner.Scan(){
 		text := scanner.Text()
 		fmt.Println(text)
-		if strings.Contains(text,"---") || count >= 2 {
-			count++
-			if count == 2 {
-				article.Summary = scanner.Text()
-			}
+		if count >= 2 || strings.Contains(text,"---") {
 			if count >= 2 {
 				detail.Content += scanner.Text() + "\n"
 			}
+			count++
 		}else if strings.Contains(text,"title:") {
 			article.Title = text[7:]
 			detail.Title = text[7:]
@@ -55,6 +52,16 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 			fmt.Println("Author: ",detail.Author)
 		}
 	}
+	if err = scanner.Err(); err != nil {
+		panic(err)
+	}
+	
+	if(len(detail.Content) < 20){
+		article.Summary = detail.Content
+	}else{
+		article.Summary = detail.Content[:20] + "..."
+	}
+
 	return article,detail
 }
 

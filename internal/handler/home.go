@@ -16,10 +16,11 @@ func HomeHandler(c *gin.Context) {
 	}
 	offset := (page - 1) * models.MaxCountEachPage
 	var articles []models.ArticleSummary
-	database.Db.Limit(10).Offset(offset).Find(&articles)
+	database.Db.Limit(models.MaxCountEachPage).Offset(offset).Find(&articles)
 	fmt.Println(articles)
 	var info models.HomeInfo
-	database.Db.Model(&models.ArticleSummary{}).Count(&info.Count)
+	database.Db.Model(&models.ArticleSummary{}).Count(&info.MaxPage)
+	info.MaxPage = (info.MaxPage + models.MaxCountEachPage - 1) / models.MaxCountEachPage
 	info.Articles = articles
 	info.CurrentPage = page
 	c.JSON(200, info)

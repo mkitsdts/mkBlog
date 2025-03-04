@@ -2,6 +2,6 @@ package models
 
 type HomeInfo struct{
 	Articles 	[]ArticleSummary `json:"articles"`
-	Count 		int64 `json:"count"`
+	MaxPage 	int64 `json:"maxpage"`
 	CurrentPage int `json:"currentPage"`
 }

@@ -16,12 +16,12 @@ import (
 func DetailHandler(c *gin.Context) {
 	title := c.Param("title")
 	var article models.ArticleDetail
-	result := database.Db.First(&article, title)
+	result := database.Db.Where("title = ?", title).First(&article)
 	if result.Error != nil {
 		c.JSON(404, gin.H{"msg": "文章不存在"})
 		return
 	}
-	fmt.Println(article)
+	fmt.Println(article.Content)
 	c.JSON(200, article)
 }
 

@@ -26,8 +26,6 @@ func UpdateArticle() {
 			database.UpdateSummary(article)
 			database.UpdateDetail(articledetial)
 			fmt.Println("更新完成")
-		}else if info.IsDir() {
-
 		}
 		return nil
 	},

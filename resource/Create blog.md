@@ -1,7 +1,9 @@
 ---
 title: create blog
-date: 2023-07-30 17:45:04
-tags: blog
+created_time: 2023-07-30 17:45:04
+updated_time: 2023-07-30 17:45:04
+category: blog
+tags: problem record
 author: mkitsdts
 ---
 # Create blog
