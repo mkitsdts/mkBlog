@@ -6,14 +6,12 @@ import (
 	"path/filepath"
 	"encoding/json"
 	"os"
-	"fmt"
+	"log/slog"
 )
 
-// 写完文章后更新
 func UpdateArticle() {
 	err := filepath.Walk("resource", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Println(err)
 			return err
 		}
 		if filepath.Ext(path) == ".md" {
@@ -25,7 +23,7 @@ func UpdateArticle() {
 	},
 	)
 	if err != nil {
-		panic(err)
+		slog.Error("failed to update article")
 	}
 
 }
@@ -43,6 +41,7 @@ func Init() {
 	}
 	file, err := os.Open("config.json")
 	if err != nil {
+		slog.Error("failed to open config.json")
 		panic(err)
 	}
 	defer file.Close()
@@ -50,6 +49,7 @@ func Init() {
 	config := Config{}
 	err = decoder.Decode(&config)
 	if err != nil {
+		slog.Error("failed to decode config.json")
 		panic(err)
 	}
 	database.InitDatabase(config.Mysql.Username, config.Mysql.Password, config.Mysql.Host, config.Mysql.Port, config.Mysql.Dbname)

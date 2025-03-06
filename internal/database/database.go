@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"mkBlog/models"
 
 	"gorm.io/driver/mysql"
@@ -14,9 +13,7 @@ var Db *gorm.DB
 func InitDatabase(username string, password string, host string, port string, dbname string) {
 	dsn := username + ":" + password + "@tcp(" + host + ":" + port + ")/" + dbname + "?charset=utf8mb4&parseTime=True&loc=Local"
 	var err error
-	fmt.Println(dsn)
 	Db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	fmt.Println("connect database")
 	if err != nil{
 		panic("failed to connect database")
 	}

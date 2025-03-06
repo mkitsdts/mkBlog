@@ -14,7 +14,11 @@ func main() {
 			if len(os.Args) < 3 {
 				panic("请输入文章名")
 			}
-			medicine.CreateArticle(os.Args[2])
+			var title string
+			for i := 2; i < len(os.Args); i++ {
+				title += os.Args[i] + " "
+			}
+			medicine.CreateArticle(title)
 			return
 		}else if os.Args[1] == "update" {
 			service.UpdateArticle()

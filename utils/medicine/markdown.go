@@ -11,7 +11,6 @@ import (
 
 // 解析markdown文件
 func ParseMarkdown(filename string, info os.FileInfo) (models.ArticleSummary,models.ArticleDetail) {
-	// 这里有很大优化空间
 	file, err := os.Open(filename)
 	if(err != nil){
 		panic(err)
@@ -53,10 +52,10 @@ func ParseMarkdown(filename string, info os.FileInfo) (models.ArticleSummary,mod
 		panic(err)
 	}
 	
-	if(len(detail.Content) < 20){
+	if(len(detail.Content) < 72){
 		article.Summary = detail.Content
 	}else{
-		article.Summary = detail.Content[:20] + "..."
+		article.Summary = detail.Content[:72] + "..."
 	}
 
 	return article,detail

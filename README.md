@@ -26,12 +26,14 @@
 
 ## 启动方式
 
-确保配置好go环境和mysql环境
+配置好go环境和mysql环境
 
 * 1、直接运行 go run main.go
 
+* 2、编译运行 go build -o blog 然后 ./blog
+
 ## 启动参数
 
-create + titlename:  创建一个名为 title.md 并且创建一个名为 title 的文件夹
+create + 文件名:  创建一个名为 title.md 并且创建一个名为 title 的文件夹
 
 update: 更新数据库
