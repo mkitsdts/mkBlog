@@ -10,7 +10,7 @@ import (
 )
 
 // 解析markdown文件
-func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail) {
+func ParseMarkdown(filename string, info os.FileInfo) (models.ArticleSummary,models.ArticleDetail) {
 	// 这里有很大优化空间
 	file, err := os.Open(filename)
 	if(err != nil){
@@ -24,7 +24,6 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 	var count int8 = 0
 	for scanner.Scan(){
 		text := scanner.Text()
-		fmt.Println(text)
 		if count >= 2 || strings.Contains(text,"---") {
 			if count >= 2 {
 				detail.Content += scanner.Text() + "\n"
@@ -37,10 +36,6 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 		}else if strings.Contains(text,"created_time:"){
 			detail.CreateAt = text[13:]
 			fmt.Println("createAt: ",detail.CreateAt)
-		}else if strings.Contains(text,"updated_time:"){
-			article.UpdateAt = text[13:]
-			detail.UpdateAt = text[13:]
-			fmt.Println("UpdateAt: ",article.UpdateAt)
 		}else if strings.Contains(text,"tags:"){
 			article.Tags = text[6:]
 			fmt.Println("Tags: ",article.Tags)
@@ -52,6 +47,8 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 			fmt.Println("Author: ",detail.Author)
 		}
 	}
+	article.UpdateAt = info.ModTime().Format("2006-01-02 15:04:05")
+	detail.UpdateAt = info.ModTime().Format("2006-01-02 15:04:05")
 	if err = scanner.Err(); err != nil {
 		panic(err)
 	}
@@ -69,7 +66,8 @@ func ParseMarkdown(filename string) (models.ArticleSummary,models.ArticleDetail)
 func CreateArticle(title string) {
 	// 生成文章模板
 	os.Mkdir("resource/"+title,os.ModePerm)
-	file, err := os.Create("articles/"+title+"/index.md")
+	filepath := "resource/" + title + ".md"
+	file, err := os.Create(filepath)
 	if(err != nil){
 		if(os.IsExist(err)){
 			fmt.Println("文件已存在")
@@ -77,7 +75,7 @@ func CreateArticle(title string) {
 		}
 	}
 	defer file.Close()
-	content := "---\n" + title  + "\ncreated_time: " + time.Now().Format("2006-01-02 15:04:05") + 
-	"\nupdated_time: " + time.Now().Format("2006-01-02 15:04:05") + "\ntags: \ncategory: \nauthor: \n---\n"
+	content := "---\ntitle: " + title  + "\ncreated_time: " + time.Now().Format("2006-01-02 15:04:05") + 
+	"\ntags: \ncategory: \nauthor: \n---\n"
 	file.WriteString(content)
 }
