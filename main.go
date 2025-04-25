@@ -1,14 +1,13 @@
 package main
 
 import (
-	"mkBlog/internal/routers"
-	"mkBlog/internal/service"
+	"mkBlog/service"
 	"mkBlog/utils/medicine"
 	"os"
 )
 
 func main() {
-	service.Init()
+	service := service.InitBlogService()
 	if len(os.Args) > 1 {
 		if os.Args[1] == "create" {
 			if len(os.Args) < 3 {
@@ -20,11 +19,10 @@ func main() {
 			}
 			medicine.CreateArticle(title)
 			return
-		}else if os.Args[1] == "update" {
+		} else if os.Args[1] == "update" {
 			service.UpdateArticle()
 			return
 		}
 	}
-	routers.InitRouter()
-	routers.Router.Run(":8080")
+	service.Run()
 }
