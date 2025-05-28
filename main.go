@@ -2,12 +2,11 @@ package main
 
 import (
 	"mkBlog/service"
-	"mkBlog/utils/medicine"
 	"os"
 )
 
 func main() {
-	service := service.InitBlogService()
+	s := service.InitBlogService()
 	if len(os.Args) > 1 {
 		if os.Args[1] == "create" {
 			if len(os.Args) < 3 {
@@ -17,12 +16,12 @@ func main() {
 			for i := 2; i < len(os.Args); i++ {
 				title += os.Args[i] + " "
 			}
-			medicine.CreateArticle(title)
+			s.CreateArticle(title)
 			return
 		} else if os.Args[1] == "update" {
-			service.UpdateArticle()
+			s.UpdateArticle()
 			return
 		}
 	}
-	service.Run()
+	s.Run()
 }

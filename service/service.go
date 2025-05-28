@@ -1,41 +1,33 @@
 package service
 
 import (
-	"context"
 	"log/slog"
+	"mkBlog/models"
 	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-func (s *BlogService) UpdateArticle() {
-	err := filepath.Walk("resource", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if filepath.Ext(path) == ".md" {
-
-		}
-		return nil
-	},
-	)
-	if err != nil {
-		slog.Error("failed to update article")
-	}
-
+type BlogService struct {
+	DB     *gorm.DB
+	Router *gin.Engine
 }
 
 func InitBlogService() *BlogService {
 	service := &BlogService{}
-	service.RedisClient = redis.NewClient(&redis.Options{
-		Addr: "localhost:6789",
-		DB:   0, // use default DB
-	})
-
-	_, err := service.RedisClient.Ping(context.Background()).Result()
+	dsn := "root:root@tcp(localhost:3306)/mysql?charset=utf8mb4&parseTime=True&loc=Local"
+	var err error
+	service.DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
+		return nil
+	}
+	// 自动迁移
+	err = service.DB.AutoMigrate(&models.ArticleSummary{}, &models.ArticleDetail{})
+	if err != nil {
+		slog.Error("failed to migrate database")
 		return nil
 	}
 	service.Router = gin.Default()
@@ -52,9 +44,9 @@ func InitBlogService() *BlogService {
 	service.Router.GET("/", service.GetArticleSummary)
 	service.Router.GET("/home", service.GetArticleSummary)
 	service.Router.GET("/articles/:title", service.GetArticleDetail)
-	service.Router.GET("/images/:title/:path", service.ImageHandler)
-	service.Router.GET("/friend", service.GetFriendList)
-	service.Router.POST("/friend/apply", service.ApplyFriend)
+
+	service.UpdateArticle()
+
 	return service
 }
 
@@ -63,4 +55,50 @@ func (s *BlogService) Run() {
 	if err != nil {
 		slog.Error("failed to run server")
 	}
+}
+
+func (s *BlogService) UpdateArticle() {
+	err := filepath.Walk("resource", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(path) == ".md" {
+			// 读取文件内容
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			// 解析文件名
+			summary := models.ArticleSummary{}
+			detail := models.ArticleDetail{}
+			summary, detail = s.ParseMarkdown(path, info)
+			// 插入数据库
+			s.DB.Where("title = ?", summary.Title).FirstOrCreate(&summary)
+			s.DB.Where("title = ?", detail.Title).FirstOrCreate(&detail)
+			// 更新数据库
+			s.DB.Model(&summary).Where("title = ?", summary.Title).Updates(models.ArticleSummary{
+				UpdateAt: summary.UpdateAt,
+				Category: summary.Category,
+				Tags:     summary.Tags,
+				Summary:  summary.Summary,
+			})
+			s.DB.Model(&detail).Where("title = ?", detail.Title).Updates(models.ArticleDetail{
+				UpdateAt: detail.UpdateAt,
+				CreateAt: detail.CreateAt,
+				Author:   detail.Author,
+				Content:  detail.Content,
+			})
+			slog.Info("update article", "title", summary.Title)
+			slog.Info("update article", "title", detail.Title)
+			// 关闭文件
+			file.Close()
+		}
+		return nil
+	},
+	)
+	if err != nil {
+		slog.Error("failed to update article")
+	}
+
 }
