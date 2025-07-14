@@ -1,3 +1,4 @@
 #忽略resource
-/resource/
-/mkblog.drawio
+/backend/resource/
+/backend/mkblog.drawio
+/backend/mkBlog
