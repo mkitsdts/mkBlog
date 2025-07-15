@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Go 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    container_name: mkblog-backend
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=mkblog
+      - MYSQL_PASSWORD=mkblog
+      - MYSQL_DATABASE=mkblog
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # MySQL 数据库服务
+  db:
+    image: mysql:8.0
+    container_name: mkblog-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mkblog
+      MYSQL_USER: mkblog
+      MYSQL_PASSWORD: mkblog
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  # 前端服务 (现在只负责构建资源)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile # This now points to the new Node.js builder Dockerfile
+    container_name: mkblog-frontend
+    # 'restart: unless-stopped' might not be necessary if it's just a build step
+    # that populates a volume and then can exit, but depends_on handles startup order.
+    restart: "no" # Or 'on-failure' if the build can fail
+    environment:
+      # VUE_APP_API_URL is used by the frontend build process (npm run build)
+      - VUE_APP_API_URL=/api
+    volumes:
+      # Mount a named volume to store the build output from /app/dist (inside the container)
+      - frontend_dist:/app/dist
+    networks:
+      - app-network
+
+  # Nginx 服务 (统一入口)
+  nginx:
+    image: nginx:alpine
+    container_name: mkblog-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # 使用你提供的位于 ./nginx/nginx.conf 的主 Nginx 配置文件
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 从 frontend 服务构建的命名卷中挂载静态文件
+      - frontend_dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - frontend # Nginx should start after frontend has built its assets
+    networks:
+      - app-network
+
+# 定义网络
+networks:
+  app-network:
+    driver: bridge
+
+# 定义数据卷
+volumes:
+  mysql_data:
+  frontend_dist: # Named volume to share frontend build artifacts
