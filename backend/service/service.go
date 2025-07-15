@@ -22,6 +22,8 @@ func NewBlogService(db *gorm.DB, r *gin.Engine) *BlogService {
 	service.Router = r
 	service.Router.GET("/", service.GetArticleSummary)
 	service.Router.GET("/article/:title", service.GetArticleDetail)
+	service.Router.GET("/friend", service.GetFriendList)
+	service.Router.POST("/apply", service.ApplyFriend)
 	service.UpdateArticle()
 	time.Sleep(2 * time.Second) // 等待文件更新完成
 	return service

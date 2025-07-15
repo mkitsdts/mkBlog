@@ -34,7 +34,12 @@ func (s *BlogService) ParseMarkdown(filename string, info os.FileInfo) (models.A
 			detail.Title = text[7:]
 			fmt.Println("title: ", article.Title)
 		} else if strings.Contains(text, "created_time:") {
-			detail.CreateAt = text[13:]
+			createdTime, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(text[13:]))
+			if err != nil {
+				slog.Error("failed to parse created_time", "value", text[13:], "error", err)
+			} else {
+				detail.CreateAt = &createdTime
+			}
 		} else if strings.Contains(text, "tags:") {
 			article.Tags = text[6:]
 		} else if strings.Contains(text, "category:") {
@@ -44,8 +49,9 @@ func (s *BlogService) ParseMarkdown(filename string, info os.FileInfo) (models.A
 		}
 	}
 	if info != nil {
-		article.UpdateAt = info.ModTime().Format("2006-01-02 15:04:05")
-		detail.UpdateAt = info.ModTime().Format("2006-01-02 15:04:05")
+		modTime := info.ModTime()
+		article.UpdateAt = &modTime
+		detail.UpdateAt = &modTime
 	}
 	if err = scanner.Err(); err != nil {
 		slog.Error("failed to read file", "filename", filename, "error", err)

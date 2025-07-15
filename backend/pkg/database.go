@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
 	"time"
@@ -20,6 +21,7 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 	for i := range retryTimes {
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 		if err == nil {
+			slog.Info("connected to database", "dsn", dsn)
 			break
 		}
 		time.Sleep(100 * time.Microsecond) // 等待100毫秒后重试
@@ -28,9 +30,12 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 		}
 	}
 	// 自动迁移
-	err = db.AutoMigrate(&models.ArticleSummary{}, &models.ArticleDetail{})
+	err = db.AutoMigrate(&models.ArticleSummary{},
+		&models.ArticleDetail{},
+		&models.Friend{})
 	if err != nil {
 		return nil, err
 	}
+	slog.Info("database migration completed")
 	return db, nil
 }
