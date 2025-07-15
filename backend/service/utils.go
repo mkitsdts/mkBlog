@@ -24,28 +24,29 @@ func (s *BlogService) ParseMarkdown(filename string, info os.FileInfo) (models.A
 	var count int8 = 0
 	for scanner.Scan() {
 		text := scanner.Text()
+		slog.Info("reading line", "line", text)
 		if count >= 2 || strings.Contains(text, "---") {
 			if count >= 2 {
 				detail.Content += scanner.Text() + "\n"
 			}
 			count++
 		} else if strings.Contains(text, "title:") {
-			article.Title = text[7:]
-			detail.Title = text[7:]
+			article.Title = strings.TrimSpace(text[6:])
+			detail.Title = article.Title
 			fmt.Println("title: ", article.Title)
 		} else if strings.Contains(text, "created_time:") {
-			createdTime, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(text[13:]))
+			createdTime, err := time.Parse("2006-01-02", strings.TrimSpace(text[13:]))
 			if err != nil {
-				slog.Error("failed to parse created_time", "value", text[13:], "error", err)
+				slog.Error("failed to parse created_time", "value", strings.TrimSpace(text[13:]), "error", err)
 			} else {
 				detail.CreateAt = &createdTime
 			}
 		} else if strings.Contains(text, "tags:") {
-			article.Tags = text[6:]
+			article.Tags = strings.TrimSpace(text[5:])
 		} else if strings.Contains(text, "category:") {
-			article.Category = text[10:]
+			article.Category = strings.TrimSpace(text[9:])
 		} else if strings.Contains(text, "author:") {
-			detail.Author = text[8:]
+			detail.Author = strings.TrimSpace(text[7:])
 		}
 	}
 	if info != nil {
