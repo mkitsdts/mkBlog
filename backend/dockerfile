@@ -21,6 +21,7 @@ COPY --from=builder --chown=appuser:appgroup /app/main /app/main
 # 复制 resource 目录 (如果存在且需要)
 # 假设 resource 目录在 Dockerfile 的同级目录下
 COPY --chown=appuser:appgroup ./resource /app/resource
+COPY --chown=appuser:appgroup ./config.json /app
 
 WORKDIR /app
 
