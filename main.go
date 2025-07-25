@@ -1,14 +1,30 @@
 package main
 
 import (
+	"mkBlog/config"
+	"mkBlog/pkg"
 	"mkBlog/service"
 	"os"
 )
 
 func main() {
-	s := service.InitBlogService()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic("failed to load config: " + err.Error())
+	}
+	db, err := pkg.NewDatabase(cfg)
+	if err != nil {
+		panic("failed to connect to database: " + err.Error())
+	}
+	r, err := pkg.NewRouter()
+	if err != nil {
+		panic("failed to create router: " + err.Error())
+	}
+
+	s := service.NewBlogService(db, r)
 	if len(os.Args) > 1 {
-		if os.Args[1] == "create" {
+		switch os.Args[1] {
+		case "create":
 			if len(os.Args) < 3 {
 				panic("请输入文章名")
 			}
@@ -18,7 +34,7 @@ func main() {
 			}
 			s.CreateArticle(title)
 			return
-		} else if os.Args[1] == "update" {
+		case "update":
 			s.UpdateArticle()
 			return
 		}

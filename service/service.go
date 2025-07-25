@@ -5,9 +5,9 @@ import (
 	"mkBlog/models"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -16,37 +16,16 @@ type BlogService struct {
 	Router *gin.Engine
 }
 
-func InitBlogService() *BlogService {
+func NewBlogService(db *gorm.DB, r *gin.Engine) *BlogService {
 	service := &BlogService{}
-	dsn := "root:root@tcp(localhost:3306)/mysql?charset=utf8mb4&parseTime=True&loc=Local"
-	var err error
-	service.DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil
-	}
-	// 自动迁移
-	err = service.DB.AutoMigrate(&models.ArticleSummary{}, &models.ArticleDetail{})
-	if err != nil {
-		slog.Error("failed to migrate database")
-		return nil
-	}
-	service.Router = gin.Default()
-	service.Router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // 允许前端域名
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204) // 处理预检请求
-			return
-		}
-		c.Next()
-	})
+	service.DB = db
+	service.Router = r
 	service.Router.GET("/", service.GetArticleSummary)
-	service.Router.GET("/home", service.GetArticleSummary)
-	service.Router.GET("/articles/:title", service.GetArticleDetail)
-
+	service.Router.GET("/article/:title", service.GetArticleDetail)
+	service.Router.GET("/friend", service.GetFriendList)
+	service.Router.POST("/apply", service.ApplyFriend)
 	service.UpdateArticle()
-
+	time.Sleep(2 * time.Second) // 等待文件更新完成
 	return service
 }
 
@@ -63,42 +42,90 @@ func (s *BlogService) UpdateArticle() {
 			return err
 		}
 		if filepath.Ext(path) == ".md" {
+			slog.Info("processing file", "path", path)
 			// 读取文件内容
 			file, err := os.Open(path)
 			if err != nil {
-				return err
+				slog.Error("failed to open file", "path", path, "error", err)
+				return nil
 			}
 			defer file.Close()
-			// 解析文件名
-			summary := models.ArticleSummary{}
-			detail := models.ArticleDetail{}
-			summary, detail = s.ParseMarkdown(path, info)
-			// 插入数据库
-			s.DB.Where("title = ?", summary.Title).FirstOrCreate(&summary)
-			s.DB.Where("title = ?", detail.Title).FirstOrCreate(&detail)
-			// 更新数据库
-			s.DB.Model(&summary).Where("title = ?", summary.Title).Updates(models.ArticleSummary{
-				UpdateAt: summary.UpdateAt,
-				Category: summary.Category,
-				Tags:     summary.Tags,
-				Summary:  summary.Summary,
-			})
-			s.DB.Model(&detail).Where("title = ?", detail.Title).Updates(models.ArticleDetail{
-				UpdateAt: detail.UpdateAt,
-				CreateAt: detail.CreateAt,
-				Author:   detail.Author,
-				Content:  detail.Content,
-			})
-			slog.Info("update article", "title", summary.Title)
-			slog.Info("update article", "title", detail.Title)
-			// 关闭文件
-			file.Close()
-		}
-		return nil
-	},
-	)
-	if err != nil {
-		slog.Error("failed to update article")
-	}
 
+			// 解析文件内容
+			summary, detail := s.ParseMarkdown(path, info)
+			slog.Info("updating article", "title", summary.Title)
+
+			// 使用事务处理数据库操作
+			tx := s.DB.Begin()
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+				}
+			}()
+
+			// 处理 ArticleSummary
+			var existingSummary models.ArticleSummary
+			result := tx.Where("title = ?", summary.Title).First(&existingSummary)
+			if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+				slog.Error("failed to query summary", "title", summary.Title, "error", result.Error)
+				tx.Rollback()
+				return nil
+			}
+
+			if result.Error == gorm.ErrRecordNotFound {
+				// 创建新记录
+				if err := tx.Create(&summary).Error; err != nil {
+					slog.Error("failed to create summary", "title", summary.Title, "error", err)
+					tx.Rollback()
+					return nil
+				}
+			} else {
+				// 更新现有记录
+				if err := tx.Model(&existingSummary).Updates(summary).Error; err != nil {
+					slog.Error("failed to update summary", "title", summary.Title, "error", err)
+					tx.Rollback()
+					return nil
+				}
+			}
+
+			// 处理 ArticleDetail
+			var existingDetail models.ArticleDetail
+			result = tx.Where("title = ?", detail.Title).First(&existingDetail)
+			if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+				slog.Error("failed to query detail", "title", detail.Title, "error", result.Error)
+				tx.Rollback()
+				return nil
+			}
+
+			if result.Error == gorm.ErrRecordNotFound {
+				// 创建新记录
+				if err := tx.Create(&detail).Error; err != nil {
+					slog.Error("failed to create detail", "title", detail.Title, "error", err)
+					tx.Rollback()
+					return nil
+				}
+			} else {
+				// 更新现有记录
+				if err := tx.Model(&existingDetail).Updates(detail).Error; err != nil {
+					slog.Error("failed to update detail", "title", detail.Title, "error", err)
+					tx.Rollback()
+					return nil
+				}
+			}
+
+			// 提交事务
+			if err := tx.Commit().Error; err != nil {
+				slog.Error("failed to commit transaction", "title", summary.Title, "error", err)
+				return nil
+			}
+
+			slog.Info("successfully updated article", "title", summary.Title)
+			return nil
+		}
+		slog.Info("processed file", "path", path)
+		return nil
+	})
+	if err != nil {
+		slog.Error("failed to update articles", "error", err)
+	}
 }

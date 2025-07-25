@@ -1,23 +1,34 @@
-# Ê¹ÓÃÌØ¶¨°æ±¾µÄ¾«¼ò»ù´¡¾µÏñ
-FROM alpine:3.21.3@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c AS prod
+FROM golang:latest AS builder
 
-# °²×°»ù±¾µÄ°²È«¸üĞÂ
-RUN apk --no-cache add ca-certificates && \
-    apk --no-cache upgrade
-
-# ´´½¨·ÇrootÓÃ»§
-RUN adduser -D -u 10001 appuser
-
-# ¸´ÖÆ±àÒëµÄ¶ş½øÖÆÎÄ¼ş²¢ÉèÖÃÈ¨ÏŞ
-COPY --from=builder --chown=appuser:appuser /app/main /app/main
-COPY --chown=appuser:appuser ./resource /app/resource
-
-# Ê¹ÓÃ·ÇrootÓÃ»§
-USER appuser
 WORKDIR /app
 
-# ½¡¿µ¼ì²é
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -q -O - http://localhost:8080/health || exit 1
+COPY go.mod go.sum ./
+RUN go env -w  GOPROXY=https://goproxy.io,direct && go mod tidy
+
+# å¤åˆ¶æ‰€æœ‰æºä»£ç 
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/main ./main.go
+
+FROM alpine:latest AS prod
+
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
+
+# builder é˜¶æ®µå¤åˆ¶ç¼–è¯‘å¥½çš„äºŒè¿›åˆ¶æ–‡ä»¶
+COPY --from=builder --chown=appuser:appgroup /app/main /app/main
+
+# å¤åˆ¶ resource ç›®å½• (å¦‚æœå­˜åœ¨ä¸”éœ€è¦)
+# å‡è®¾ resource ç›®å½•ä¸ Dockerfile çš„åŒçº§ç›®å½•ä¸‹
+COPY --chown=appuser:appgroup ./resource /app/resource
+COPY --chown=appuser:appgroup ./config.json /app
+
+WORKDIR /app
+
+# ä½¿ç”¨é root ç”¨æˆ·è¿è¡Œ
+USER appuser
 
 EXPOSE 8080
+
+# è¿è¡Œåº”ç”¨ç¨‹åº
 CMD ["/app/main"]
