@@ -1,6 +1,11 @@
+**English Version: [English](README_en.md)**
+
+
 # mkBlog
 
- Go 开发的极简个人博客系统，专注于内容创作和技术积累。
+ Go 开发的极简个人博客系统，专注于内容创作和技术积累，一键部署前后端。
+
+ [!show](./docs/images/home.png)
 
 ## 项目介绍
 
