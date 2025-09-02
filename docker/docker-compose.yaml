@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mkblog-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mkblog
+      MYSQL_USER: mkblog 
+      MYSQL_PASSWORD: mkblog
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mkblog-app
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=mkblog
+      - DB_PASSWORD=mkblog
+      - DB_NAME=mkblog
+
+volumes:
+  db_data:

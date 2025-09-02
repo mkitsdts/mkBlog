@@ -4,7 +4,6 @@ type ArticleSummary struct {
 	Title    string `json:"title" gorm:"primaryKey"`
 	UpdateAt string `json:"updateAt"`
 	Category string `json:"category"`
-	Tags     string `json:"tags"`
 	Summary  string `json:"summary"`
 }
 

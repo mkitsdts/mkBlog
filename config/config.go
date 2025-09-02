@@ -18,19 +18,26 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	var config Config
-	file, err := os.Open("config.json")
-	if err == nil {
-		defer file.Close()
-		if err := json.NewDecoder(file).Decode(&config); err != nil {
-			return nil, err
-		}
-		return &config, err
+	var cfg Config
+	// Prefer environment variables
+	if host := os.Getenv("DB_HOST"); host != "" {
+		cfg.MySQL.Host = host
+		cfg.MySQL.Port = os.Getenv("DB_PORT")
+		cfg.MySQL.User = os.Getenv("DB_USER")
+		cfg.MySQL.Password = os.Getenv("DB_PASSWORD")
+		cfg.MySQL.Name = os.Getenv("DB_NAME")
+		return &cfg, nil
 	}
-	config.MySQL.Host = os.Getenv("MYSQL_HOST")
-	config.MySQL.Port = os.Getenv("MYSQL_PORT")
-	config.MySQL.User = os.Getenv("MYSQL_USER")
-	config.MySQL.Password = os.Getenv("MYSQL_PASSWORD")
-	config.MySQL.Name = os.Getenv("MYSQL_NAME")
-	return &config, nil
+
+	// Fallback to config.json file if exists
+	file, err := os.Open("config.json")
+	if err != nil {
+		return &cfg, nil // silent fallback (empty values)
+	}
+	defer file.Close()
+	dec := json.NewDecoder(file)
+	if err := dec.Decode(&cfg); err != nil {
+		return &cfg, nil
+	}
+	return &cfg, nil
 }

@@ -37,5 +37,30 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 	slog.Info("database migration completed")
+
+	// 初始化默认 Hello World 文章（仅在空库时）
+	var count int64
+	if err := db.Model(&models.ArticleSummary{}).Count(&count).Error; err == nil && count == 0 {
+		summary := models.ArticleSummary{
+			Title:    "Hello World",
+			UpdateAt: time.Now().Format("2006-01-02 15:04:05"),
+			Category: "General",
+			Summary:  "欢迎使用博客，您可以删除这篇文章或编辑它。",
+		}
+		detail := models.ArticleDetail{
+			Title:    summary.Title,
+			CreateAt: summary.UpdateAt,
+			UpdateAt: summary.UpdateAt,
+			Author:   "system",
+			Content:  "# Hello World\n\n欢迎使用博客，您可以删除这篇文章或编辑它。",
+		}
+		if err := db.Create(&summary).Error; err != nil {
+			slog.Warn("failed to insert default article summary", "error", err)
+		} else if err := db.Create(&detail).Error; err != nil {
+			slog.Warn("failed to insert default article detail", "error", err)
+		} else {
+			slog.Info("inserted default Hello World article")
+		}
+	}
 	return db, nil
 }
