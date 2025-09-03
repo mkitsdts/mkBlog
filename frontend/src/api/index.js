@@ -1,14 +1,24 @@
 import axios from 'axios';
+import { loadConfig } from '@/config';
 
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Adjust to your backend API URL
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+let clientPromise = null;
+async function getClient() {
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      const site = await loadConfig();
+      const base = (site.server || '').replace(/\/$/, '');
+      return axios.create({
+        baseURL: `${base}/api`,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    })();
+  }
+  return clientPromise;
+}
 
 export default {
-  getArticles(page, pageSize, categories) {
+  async getArticles(page, pageSize, categories) {
+    const apiClient = await getClient();
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (Array.isArray(categories) && categories.length) {
       params.append('categories', categories.join(','));
@@ -17,16 +27,20 @@ export default {
     }
     return apiClient.get(`/articles?${params.toString()}`);
   },
-  getArticleDetail(title) {
+  async getArticleDetail(title) {
+    const apiClient = await getClient();
     return apiClient.get(`/article/${encodeURIComponent(title)}`);
   },
-  getCategories() {
+  async getCategories() {
+    const apiClient = await getClient();
     return apiClient.get('/categories');
   },
-  getFriends() {
+  async getFriends() {
+    const apiClient = await getClient();
     return apiClient.get('/friends');
   },
-  applyFriend(data) {
+  async applyFriend(data) {
+    const apiClient = await getClient();
     return apiClient.post('/friends', data);
   },
 };

@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
+	go.yaml.in/yaml/v3 v3.0.4
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.30.2
 )

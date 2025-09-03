@@ -26,8 +26,21 @@ npm install
 npm run dev
 ```
 
+前端运行时通过请求 `/config.yaml`（后端静态暴露）获取站点配置，不再构建期生成。
+
 ### Type-Check, Compile and Minify for Production
 
 ```sh
 npm run build
 ```
+
+`config.yaml` 样例:
+
+```yaml
+site:
+	signature: 你的签名
+	avatarPath: avatar.jpg
+	server: https://example.com/api
+```
+
+修改 `config.yaml` 后重新部署容器即可生效（无需重新前端构建，除非新增字段）。

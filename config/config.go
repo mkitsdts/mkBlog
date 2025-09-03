@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
 	"log/slog"
 	"os"
+
+	"go.yaml.in/yaml/v3"
 )
 
 type MySQLConfig struct {
@@ -34,15 +35,16 @@ type Config struct {
 var Cfg *Config = &Config{}
 
 func LoadConfig() error {
-	// Fallback to config.json file if exists
-	file, err := os.Open("config.json")
+	// Fallback to config.yaml file if exists
+	file, err := os.Open("config.yaml")
 	if err != nil {
-		slog.Warn("config.json not found, using environment variables or defaults")
+		slog.Warn("config.yaml not found, using environment variables or defaults")
+	} else {
+		defer file.Close()
 	}
-	defer file.Close()
-	dec := json.NewDecoder(file)
-	if err := dec.Decode(&Cfg); err != nil {
-		slog.Warn("Failed to decode config.json, using environment variables or defaults")
+
+	if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
+		slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 	}
 
 	if host := os.Getenv("DB_HOST"); host != "" {
@@ -80,12 +82,8 @@ func LoadConfig() error {
 		slog.Warn("DB name not set, defaulting to mkblog")
 	}
 
-	if tls := os.Getenv("TLS_ENABLE"); tls == "true" || tls == "1" {
-		Cfg.TLS.Enabled = true
-	} else {
-		Cfg.TLS.Enabled = false
-		slog.Warn("TLS not enabled, defaulting to false")
-		return nil
+	if tls := os.Getenv("TLS_ENABLE"); tls != "" {
+		Cfg.TLS.Enabled = tls == "true" || tls == "1"
 	}
 
 	if cert := os.Getenv("TLS_CERT"); cert != "" {

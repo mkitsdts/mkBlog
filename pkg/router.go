@@ -13,6 +13,8 @@ func NewRouter() (*gin.Engine, error) {
 	// 精确挂载静态资源，避免根通配符与 /api 冲突
 	r.Static("/assets", "./static/assets")
 	r.StaticFile("/favicon.ico", "./static/favicon.ico")
+	// 暴露根目录 config.yaml 用于前端运行时加载
+	r.StaticFile("/config.yaml", "./config.yaml")
 	r.StaticFile("/", "./static/index.html")
 
 	// SPA 回退

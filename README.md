@@ -43,18 +43,7 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 
 2. **配置文件**
    
-   编辑 `backend/config.json`：
-   ```json
-   {
-       "mysql": {
-           "host": "localhost",
-           "port": "3306",
-           "user": "YOUR_USER",
-           "password": "YOUR_PASSWORD",
-           "name": "mkblog"
-       }
-   }
-   ```
+在 `config.yaml` 里，前往 [配置文件](config.yaml) 查看注释
 
 3. **启动后端服务**
 ```bash
@@ -72,22 +61,12 @@ docker-compose up -d
 
 ## 使用说明
 
-修改头像和个性签名目前只能在 frontend/src 文件夹下修改 config.js 文件
+修改头像和个性签名可以在 config.yaml 里进行了，对应 site 下的值
 
 上传文件可以通过 CLI 提供的 mkblog push 命令上传
 
 ## 访问地址
 
-前后端统一：http://localhost:8080
+前后端统一地址：https://mkitsdts.top:8080
 
 如果需要配置 TLS 证书，可以在 config.json 里 tls 配置项的 enabled 选项打开，然后把 TLS 证书拷贝到 static 文件夹下
-
-## 开发进度
-
-- [x] 基础文章系统
-- [x] 文章分类和搜索
-- [x] 友链管理
-- [x] 响应式 UI
-- [ ] 评论系统
-- [ ] RSS 订阅
-- [ ] SEO 优化

@@ -3,7 +3,7 @@ FROM node:22.19.0-alpine AS frontend
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 COPY frontend/ ./
 
@@ -30,7 +30,8 @@ WORKDIR /app
 COPY --from=backend /app/main .
 
 COPY --from=backend /app/static ./static
-COPY --from=backend /app/config.json .
+# 复制配置文件供前端运行时获取
+COPY config.yaml ./config.yaml
 
 EXPOSE 8080
 

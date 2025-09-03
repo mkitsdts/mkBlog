@@ -67,7 +67,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
-import config from '@/config';
+import cfg from '@/config';
 
 export default {
   name: 'Home',
@@ -81,8 +81,8 @@ export default {
       }
     };
 
-    const avatarUrl = ref(getAvatarUrl());
-    const signature = ref(config.signature);
+  const avatarUrl = ref('');
+  const signature = ref('');
   const articles = ref([]);
   const categories = ref([]);
   const selectedCategories = ref([]);
@@ -132,7 +132,14 @@ export default {
       fetchArticles(page);
     };
 
-    onMounted(() => {
+    onMounted(async () => {
+      const conf = await cfg.loadConfig();
+      signature.value = conf.signature;
+      try {
+        avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
+      } catch {
+        avatarUrl.value = '';
+      }
       fetchCategories();
       fetchArticles(currentPage.value);
     });

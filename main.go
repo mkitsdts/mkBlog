@@ -20,6 +20,5 @@ func main() {
 		panic("failed to create router: " + err.Error())
 	}
 
-	s := service.NewBlogService(db, r, config.Cfg)
-	s.Run()
+	service.NewBlogService(db, r, config.Cfg)
 }
