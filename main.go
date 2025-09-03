@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
+
+	if err := config.LoadConfig(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}
-	db, err := pkg.NewDatabase(cfg)
+	db, err := pkg.NewDatabase()
 	if err != nil {
 		panic("failed to connect to database: " + err.Error())
 	}
@@ -20,6 +20,6 @@ func main() {
 		panic("failed to create router: " + err.Error())
 	}
 
-	s := service.NewBlogService(db, r, cfg)
+	s := service.NewBlogService(db, r, config.Cfg)
 	s.Run()
 }

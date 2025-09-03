@@ -10,12 +10,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
+func NewDatabase() (*gorm.DB, error) {
 	var db *gorm.DB
 	var err error
-	dsn := cfg.MySQL.User + ":" + cfg.MySQL.Password +
-		"@tcp(" + cfg.MySQL.Host + ":" + cfg.MySQL.Port + ")/" +
-		cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := config.Cfg.MySQL.User + ":" + config.Cfg.MySQL.Password +
+		"@tcp(" + config.Cfg.MySQL.Host + ":" + config.Cfg.MySQL.Port + ")/" +
+		config.Cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=Local"
 	// 等待数据库启动
 	retryTimes := 100
 	for i := range retryTimes {

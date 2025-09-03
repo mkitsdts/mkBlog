@@ -5,5 +5,14 @@
         "user": "mkblog",
         "password": "mkblog",
         "name": "mkblog"
+    },
+    "tls": {
+        "enabled": true,
+        "cert": "./static/server.crt",
+        "key": "./static/server.key"
+    },
+    "auth": {
+        "enabled": true,
+        "secret": "mk,.b!!@/log2414sdsa1faS'221"
     }
 }

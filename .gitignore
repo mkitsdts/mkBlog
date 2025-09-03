@@ -2,3 +2,5 @@
 /resource
 /mkblog.drawio
 /mkBlog
+/static/server.key
+/static/server.crt
