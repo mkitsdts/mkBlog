@@ -30,7 +30,6 @@ WORKDIR /app
 COPY --from=backend /app/main .
 
 COPY --from=backend /app/static ./static
-COPY --from=backend /app/resource ./resource
 COPY --from=backend /app/config.json .
 
 EXPOSE 8080
