@@ -140,8 +140,33 @@ func (s *BlogService) AddArticle(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "invalid article data"})
 		return
 	}
-	result := s.DB.Create(&article)
-	if result.Error != nil {
+
+	artd := models.ArticleDetail{
+		Title:   article.Title,
+		Content: article.Content,
+		Author:  article.Author,
+	}
+
+	summary := ""
+	if len(article.Content) < 100 {
+		summary = article.Content
+	} else {
+		summary = article.Content[:100]
+	}
+
+	arts := models.ArticleSummary{
+		Title:    article.Title,
+		Category: article.Category,
+		Summary:  summary,
+		UpdateAt: article.UpdateAt,
+	}
+
+	if result := s.DB.Create(&artd); result.Error != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+
+	if result := s.DB.Create(&arts); result.Error != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
