@@ -74,7 +74,7 @@ docker-compose up -d
 
 修改头像和个性签名目前只能在 frontend/src 文件夹下修改 config.js 文件
 
-目前暂时没有很好的方式上传文章，正在想一个方案
+上传文件可以通过 CLI 提供的 mkblog push 命令上传
 
 ## 访问地址
 
@@ -88,7 +88,6 @@ docker-compose up -d
 - [x] 文章分类和搜索
 - [x] 友链管理
 - [x] 响应式 UI
-- [ ] 后台管理界面
 - [ ] 评论系统
 - [ ] RSS 订阅
 - [ ] SEO 优化
