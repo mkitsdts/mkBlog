@@ -80,7 +80,7 @@ docker-compose up -d
 
 前后端统一：http://localhost:8080
 
-如果需要配置 TLS 证书或修改端口，目前只能自行修改代码
+如果需要配置 TLS 证书，可以在 config.json 里 tls 配置项的 enabled 选项打开，然后把 TLS 证书拷贝到 static 文件夹下
 
 ## 开发进度
 

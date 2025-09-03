@@ -1,30 +1,32 @@
 **中文版本: [中文](README.md).**
 
+**Chinese Version: [中文](README.md)**
+
 # mkBlog
 
-An ultra-minimal personal blog system written by Go, focused on content creation and technical accumulation. One‑command deploy for both backend and frontend.
+A minimal personal blog system written in Go, focused on content creation and knowledge accumulation. One-step deployment for backend and frontend.
 
 ![Home](./docs/images/home.png)
 
 ## Overview
 
-mkBlog is a lightweight personal blogging platform supporting Markdown posts and category organization. It is intentionally simple, easy to deploy, and easy to maintain.
+mkBlog is a lightweight personal blogging system supporting Markdown articles and categories. It is simple in design, easy to deploy, and easy to maintain.
 
 ## Tech Stack
 
-- **Go 1.24** – Primary language
+- **Go 1.24** – Language
 - **Gin** – Web framework
 - **GORM** – ORM
 - **MySQL** – Database
 
 ## Features
 
-- ✅ **Post Management** – Create, store and render Markdown articles
-- ✅ **Categories** – Organize posts by category (multi-select filter on the homepage)
-- ✅ **Search (keyword)** – Basic keyword searching (planned / partial depending on backend implementation)
-- ✅ **Pagination** – Paged article list
-- ✅ **Friend Links** – Display & apply for friendship links
-- ❌ **Image Upload UI** – Not yet implemented (images can be referenced manually if hosted)
+- ✅ Articles: Create, edit, render Markdown
+- ✅ Categories: Organize articles
+- ✅ Search: Keyword search
+- ✅ Pagination: Paged list
+- ✅ Friend links: Listing & application
+- ❌ Image management (planned)
 
 ## Quick Start
 
@@ -34,99 +36,60 @@ mkBlog is a lightweight personal blogging platform supporting Markdown posts and
 
 ### Native Deployment
 
-1. **Create database**
-    ```bash
-    CREATE DATABASE mkblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    ```
+1. Database
+   ```bash
+   CREATE DATABASE mkblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
 
-2. **Configure `config.json`** (at project root):
-    ```json
-    {
-      "mysql": {
-         "host": "localhost",
-         "port": "3306",
-         "user": "YOUR_USER",
-         "password": "YOUR_PASSWORD",
-         "name": "mkblog"
-      }
-    }
-    ```
+2. Config (`backend/config.json`)
+   ```json
+   {
+     "mysql": {
+       "host": "localhost",
+       "port": "3306",
+       "user": "YOUR_USER",
+       "password": "YOUR_PASSWORD",
+       "name": "mkblog"
+     }
+   }
+   ```
 
-3. **Run backend**
-    ```bash
-    go mod tidy
-    go run main.go
-    ```
+3. Run
+   ```bash
+   go mod tidy
+   go run main.go
+   ```
 
-The server listens on `:8080` by default and serves both API and built frontend.
+### Docker (MySQL Example)
 
-### Docker Deployment
-
-From project root (compose file located in `docker/`):
 ```bash
-docker compose -f docker/docker-compose.yaml up -d --build
+cd docker
+docker-compose up -d
 ```
 
-Services:
-- `db` – MySQL 8.0 (data persisted in named volume `db_data`)
-- `app` – Go application (listens on port 8080)
+## Usage
 
-## Usage Notes
-
-- Avatar & signature: currently edited in `frontend/src/config.js` (hard‑coded for now).
-- Article upload: no admin UI yet; insert via SQL or extend backend.
-- Default “Hello World” article is auto-created when the database is empty.
+- Avatar and signature: edit frontend/src/config.js (temporary approach)
+- Upload articles: use CLI tool `mkblog push` (write Markdown with front matter)
 
 ## Access
 
-Unified access (API + frontend SPA): `http://localhost:8080`
+Unified frontend & backend:
+```
+http://localhost:8080
+```
 
-To enable TLS or change port, adjust the code (or wrap with a reverse proxy like Nginx / Caddy).
+TLS:
+- If using built‑in (manual cert): enable in config and place cert/key in `static/`
+- Or prefer reverse proxy (Nginx/Caddy) or CDN (Cloudflare)
 
 ## Roadmap
 
-- [x] Core article system
-- [x] Category filtering (multi-select)
+- [x] Basic article system
+- [x] Categories & search
 - [x] Friend links
-- [x] Responsive UI & improved card design
-- [x] Markdown rendering + syntax highlight
-- [ ] Admin dashboard
-- [ ] Comment system
+- [x] Responsive UI
+- [ ] Comments
 - [ ] RSS feed
-- [ ] SEO enhancements
-- [ ] Image upload pipeline
-
-## Project Structure (Simplified)
-
-```
-mkBlog
-├── main.go              # Entry point
-├── config/              # Configuration loader
-├── service/             # HTTP handlers (articles, friends, categories)
-├── models/              # GORM models
-├── pkg/                 # Router & database setup
-├── static/              # Built frontend assets (served in production)
-└── frontend/            # Vite + Vue 3 source
-```
-
-## API (Selected)
-
-| Method | Path                     | Description                     |
-|--------|--------------------------|---------------------------------|
-| GET    | /api/articles            | List articles (supports pagination & categories) |
-| GET    | /api/article/:title      | Get article detail              |
-| GET    | /api/categories          | Distinct category list          |
-| GET    | /api/friends             | Friend links list               |
-| POST   | /api/friends             | Apply for friend link           |
-| PUT    | /api/article/:title      | (Prototype) add article         |
-
-## Contributing
-
-Issues & PRs are welcome. Keep code small, cohesive, and dependency-light.
-
-## License
-
-MIT
-
----
-Feel free to adapt this project into your own writing platform. Happy blogging!
+- [ ] RSS feed
+- [ ] SEO optimization
