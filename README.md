@@ -1,6 +1,5 @@
 **English Version: [English](README_en.md)**
 
-
 # mkBlog
 
  Go 开发的极简个人博客系统，专注于内容创作和技术积累，一键部署前后端。
@@ -10,6 +9,14 @@
 ## 项目介绍
 
 mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章分类。系统设计简洁，易于部署和维护。
+
+## 使用说明
+
+修改头像和个性签名可以在 [配置文件](config.yaml) 里进行，修改对应 site 下的值
+
+上传文件可以通过 CLI 提供的 mkblog push 命令上传
+
+目前能使用，但还存在一些性能问题，后续会着重优化。
 
 ## 技术栈
 
@@ -58,12 +65,6 @@ go run main.go
 cd docker
 docker-compose up -d
 ```
-
-## 使用说明
-
-修改头像和个性签名可以在 config.yaml 里进行了，对应 site 下的值
-
-上传文件可以通过 CLI 提供的 mkblog push 命令上传
 
 ## 访问地址
 
