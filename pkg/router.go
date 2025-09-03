@@ -1,8 +1,6 @@
 package pkg
 
 import (
-	"mkBlog/config"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,9 +8,6 @@ func NewRouter() (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
-	if config.Cfg.TLS.Enabled {
-		r.RunTLS(":8080", config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
-	}
 	r.SetTrustedProxies([]string{"127.0.0.1", "192.168.1.100"})
 
 	// 精确挂载静态资源，避免根通配符与 /api 冲突

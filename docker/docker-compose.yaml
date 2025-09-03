@@ -10,9 +10,6 @@ services:
       MYSQL_DATABASE: mkblog
       MYSQL_USER: mkblog 
       MYSQL_PASSWORD: mkblog
-      TLS_ENABLE: "true"
-      TLS_CERT: "./static/server.crt"
-      TLS_KEY: "./static/server.key"
     ports:
       - "3306:3306"
     volumes:
@@ -34,6 +31,9 @@ services:
       - DB_USER=mkblog
       - DB_PASSWORD=mkblog
       - DB_NAME=mkblog
+      - TLS_ENABLE=true
+      - TLS_CERT=./static/server.crt
+      - TLS_KEY=./static/server.key
 
 volumes:
   db_data:

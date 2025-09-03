@@ -1,10 +1,10 @@
 package service
 
 import (
+	"crypto/tls"
 	"log/slog"
 	"mkBlog/config"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,11 +16,12 @@ type BlogService struct {
 	Cfg    *config.Config
 }
 
-func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) *BlogService {
-	service := &BlogService{}
-	service.DB = db
-	service.Router = r
-	service.Cfg = cfg
+func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
+	service := &BlogService{
+		DB:     db,
+		Router: r,
+		Cfg:    cfg,
+	}
 
 	api := r.Group("/api")
 	{
@@ -35,8 +36,29 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) *BlogService
 			api.PUT("/article/:title", service.AddArticle)
 		}
 	}
-	time.Sleep(2 * time.Second)
-	return service
+
+	if cfg.TLS.Enabled {
+		srv := &http.Server{
+			Addr:    ":8080",
+			Handler: r,
+			TLSConfig: &tls.Config{
+				MinVersion:               tls.VersionTLS12,
+				PreferServerCipherSuites: true,
+				CurvePreferences: []tls.CurveID{
+					tls.X25519, tls.CurveP256,
+				},
+			},
+		}
+		// Start HTTPS server
+		if err := srv.ListenAndServeTLS(cfg.TLS.Cert, cfg.TLS.Key); err != nil {
+			slog.Error("failed to start HTTPS server", "error", err)
+		}
+	} else {
+		if err := r.Run(":8080"); err != nil {
+			slog.Error("failed to start HTTP server", "error", err)
+		}
+	}
+
 }
 
 func (s *BlogService) Auth() gin.HandlerFunc {
@@ -47,12 +69,5 @@ func (s *BlogService) Auth() gin.HandlerFunc {
 		} else {
 			c.AbortWithStatus(http.StatusUnauthorized)
 		}
-	}
-}
-
-func (s *BlogService) Run() {
-	err := s.Router.Run(":8080")
-	if err != nil {
-		slog.Error("failed to run server")
 	}
 }
