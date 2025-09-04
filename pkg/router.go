@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,17 +12,34 @@ func NewRouter() (*gin.Engine, error) {
 	r.Use(gin.Logger(), gin.Recovery())
 	r.SetTrustedProxies([]string{"127.0.0.1", "192.168.1.100"})
 
-	// 精确挂载静态资源，避免根通配符与 /api 冲突
-	r.Static("/assets", "./static/assets")
-	r.StaticFile("/favicon.ico", "./static/favicon.ico")
-	// 暴露根目录 config.yaml 用于前端运行时加载
-	r.StaticFile("/config.yaml", "./config.yaml")
-	r.StaticFile("/", "./static/index.html")
+	// 构建静态资源内存缓存（假设构建产物都放在 ./static）
+	cache, err := BuildAssetCache("./static")
+	if err != nil {
+		log.Printf("build asset cache failed: %v", err)
+	}
 
-	// SPA 回退
-	r.NoRoute(func(c *gin.Context) {
-		c.File("./static/index.html")
-	})
+	// 手工注册处理静态文件
+	// 1. config.yaml 仍直接文件读取（便于随时改），如果想缓存也可仿照处理
+	r.StaticFile("/config.yaml", "./config.yaml")
+
+	// 2. assets & index 走内存
+	if cache != nil {
+		r.GET("/assets/*any", cache.Handler())
+		r.GET("/", cache.Handler())
+		r.GET("/index.html", cache.Handler())
+		// SPA 回退
+		r.NoRoute(func(c *gin.Context) {
+			c.Request.URL.Path = "/"
+			cache.Handler()(c)
+		})
+	} else {
+		// 回退传统文件方式（构建缓存失败才走）
+		r.Static("/assets", "./static/assets")
+		r.StaticFile("/", "./static/index.html")
+		r.NoRoute(func(c *gin.Context) {
+			c.File("./static/index.html")
+		})
+	}
 
 	return r, nil
 }
