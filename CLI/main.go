@@ -139,7 +139,7 @@ func stripMarkdown(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func pushOne(server, token string, meta Meta, body string) error {
+func pushOne(server, secret string, meta Meta, body string) error {
 	payload := Payload{
 		Title:    meta.Title,
 		Category: meta.Category,
@@ -151,8 +151,8 @@ func pushOne(server, token string, meta Meta, body string) error {
 	if server == "" {
 		server = Cfg.Server
 	}
-	if token == "" {
-		token = Cfg.Token
+	if secret == "" {
+		secret = Cfg.Secret
 	}
 
 	// 假设后端接口：PUT /api/article/:title  JSON body
@@ -163,8 +163,8 @@ func pushOne(server, token string, meta Meta, body string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if secret != "" {
+		req.Header.Set("Authorization", "Bearer "+secret)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -291,7 +291,7 @@ func usage() {
 
 type Config struct {
 	Server string `json:"server" yaml:"server"`
-	Token  string `json:"token" yaml:"token"`
+	Secret string `json:"secret" yaml:"secret"`
 }
 
 var Cfg *Config = &Config{}

@@ -1,4 +1,4 @@
-module mkBlog
+module mkBlog-CLI
 
 go 1.24.0
 
