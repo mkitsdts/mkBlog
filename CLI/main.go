@@ -179,6 +179,29 @@ func pushOne(server, secret string, meta Meta, body string) error {
 	return nil
 }
 
+func deleteArticle(title string) error {
+	url := fmt.Sprintf("%s/api/article/%s", strings.TrimRight(Cfg.Server, "/"), urlEscape(title))
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if Cfg.Secret != "" {
+		req.Header.Set("Authorization", "Bearer "+Cfg.Secret)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	rb, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("删除失败 %s: %s", resp.Status, string(rb))
+	}
+	fmt.Printf("✅ %s 删除成功\n", title)
+	return nil
+}
+
 func urlEscape(s string) string {
 	repl := strings.ReplaceAll(s, " ", "%20")
 	return repl
@@ -270,6 +293,26 @@ func runCreate(args []string) error {
 	}
 
 	fmt.Printf("创建文章: %s\n", *title)
+	return nil
+}
+
+func runDelete(args []string) error {
+	fs := flag.NewFlagSet("delete", flag.ContinueOnError)
+	title := fs.String("title", "", "文章标题")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if *title == "" {
+		return fmt.Errorf("文章标题不能为空")
+	}
+
+	// 发送删除请求
+	if err := deleteArticle(*title); err != nil {
+		return err
+	}
+
+	fmt.Printf("删除文章: %s\n", *title)
 	return nil
 }
 

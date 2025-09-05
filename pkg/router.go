@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func NewRouter() (*gin.Engine, error) {
 	// 构建静态资源内存缓存（假设构建产物都放在 ./static）
 	cache, err := BuildAssetCache("./static")
 	if err != nil {
-		log.Printf("build asset cache failed: %v", err)
+		slog.Warn("build asset cache failed,", "error:", err)
 	}
 
 	// 手工注册处理静态文件

@@ -172,3 +172,26 @@ func (s *BlogService) AddArticle(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"msg": "successfully added article"})
 }
+
+func (s *BlogService) DeleteArticle(c *gin.Context) {
+	type Title struct {
+		Title string `json:"title"`
+	}
+	var title Title
+	if err := c.BindJSON(&title); err != nil {
+		c.JSON(400, gin.H{"msg": "invalid request body"})
+		return
+	}
+
+	if err := s.DB.Where("title = ?", title.Title).Delete(&models.ArticleDetail{}).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+
+	if err := s.DB.Where("title = ?", title.Title).Delete(&models.ArticleSummary{}).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"msg": "successfully deleted article"})
+}
