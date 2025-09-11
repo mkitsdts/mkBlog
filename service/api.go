@@ -3,6 +3,7 @@ package service
 import (
 	"log/slog"
 	"mkBlog/models"
+	"mkBlog/pkg"
 	"path"
 	"strconv"
 	"strings"
@@ -171,6 +172,23 @@ func (s *BlogService) AddArticle(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"msg": "successfully added article"})
+}
+
+func (s *BlogService) AddImage(c *gin.Context) {
+	img := &models.Image{}
+	if err := c.BindJSON(img); err != nil {
+		c.JSON(400, gin.H{"msg": "invalid request body"})
+		return
+	}
+	if img.Title == "" || img.Name == "" || len(img.Data) == 0 {
+		c.JSON(400, gin.H{"msg": "invalid image data"})
+		return
+	}
+	if err := pkg.SaveImage(img); err != nil {
+		c.JSON(500, gin.H{"msg": "failed to save image"})
+		return
+	}
+	c.JSON(200, gin.H{"msg": "successfully added image"})
 }
 
 func (s *BlogService) DeleteArticle(c *gin.Context) {

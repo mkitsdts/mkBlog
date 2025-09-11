@@ -26,10 +26,17 @@ type AuthConfig struct {
 	Secret  string `json:"secret" yaml:"secret"`
 }
 
+type ServerConfig struct {
+	Port          int    `json:"port" yaml:"port"`
+	Host          string `json:"host" yaml:"host"`
+	ImageSavePath string `json:"imageSavePath" yaml:"imageSavePath"`
+}
+
 type Config struct {
-	MySQL MySQLConfig `json:"mysql" yaml:"mysql"`
-	TLS   TLSConfig   `json:"tls" yaml:"tls"`
-	Auth  AuthConfig  `json:"auth" yaml:"auth"`
+	Server ServerConfig `json:"server" yaml:"server"`
+	MySQL  MySQLConfig  `json:"mysql" yaml:"mysql"`
+	TLS    TLSConfig    `json:"tls" yaml:"tls"`
+	Auth   AuthConfig   `json:"auth" yaml:"auth"`
 }
 
 var Cfg *Config = &Config{}
