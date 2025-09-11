@@ -32,8 +32,10 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 		api.POST("/friends", service.ApplyFriend)
 		if cfg.Auth.Enabled {
 			api.PUT("/article/:title", service.AddArticle, service.Auth())
+			api.PUT("/image", service.AddImage, service.Auth())
 		} else {
 			api.PUT("/article/:title", service.AddArticle)
+			api.PUT("/image", service.AddImage)
 		}
 	}
 
