@@ -10,7 +10,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # 
-FROM golang:latest AS backend
+FROM golang:1.25.1 AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./

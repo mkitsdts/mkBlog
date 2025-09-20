@@ -27,6 +27,7 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 	{
 		api.GET("/articles", service.GetArticleSummary)
 		api.GET("/article/:title", service.GetArticleDetail)
+		api.GET("/search", service.SearchArticle)
 		api.GET("/categories", service.GetCategories)
 		api.GET("/friends", service.GetFriendList)
 		api.POST("/friends", service.ApplyFriend)

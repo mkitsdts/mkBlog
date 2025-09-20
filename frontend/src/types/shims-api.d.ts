@@ -1,8 +1,9 @@
 declare module '@/api' {
   interface ArticleSummary { title: string; summary?: string; UpdateAt?: string; updateAt?: string }
   interface ArticleDetail { title: string; content: string; author?: string; updateAt?: string }
-  const api: {
-    getArticles(page: number, pageSize: number): Promise<{ data: { articles: ArticleSummary[]; total: number } }>
+    const api: {
+      getArticles(page: number, pageSize: number, categories?: string[]|string, q?: string): Promise<{ data: { articles: ArticleSummary[]; total: number } }>
+      searchArticles(q: string, page: number, pageSize: number): Promise<{ data: { articles: ArticleSummary[]; total: number } }>
     getArticleDetail(title: string): Promise<{ data: ArticleDetail }>
   getCategories(): Promise<{ data: { categories: string[] } }>
     getFriends(): Promise<any>

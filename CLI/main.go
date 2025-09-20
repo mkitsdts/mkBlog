@@ -179,6 +179,93 @@ func pushOne(server, secret string, meta Meta, body string) error {
 	return nil
 }
 
+// Image 定义与后端 models.Image 对齐
+type Image struct {
+	Title string `json:"title"`
+	Data  []byte `json:"data"`
+	Name  string `json:"name"`
+}
+
+var imageExts = map[string]struct{}{
+	".png":  {},
+	".jpg":  {},
+	".jpeg": {},
+	".webp": {},
+	".svg":  {},
+	".ico":  {},
+}
+
+// pushImages 扫描 markdown 同目录下同名文件夹中的图片并上传
+func pushImages(server, secret, articleTitle, mdPath string) (int, error) {
+	if server == "" {
+		server = Cfg.Server
+	}
+	if secret == "" {
+		secret = Cfg.Secret
+	}
+	dir := filepath.Dir(mdPath)
+	base := filepath.Base(mdPath)
+	dot := strings.LastIndex(base, ".")
+	if dot > 0 {
+		base = base[:dot]
+	}
+	imgDir := filepath.Join(dir, base)
+	stat, err := os.Stat(imgDir)
+	if err != nil || !stat.IsDir() {
+		return 0, nil // 没有同名目录直接跳过
+	}
+	entries, err := os.ReadDir(imgDir)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, e := range entries {
+		if e.IsDir() { // 不递归
+			continue
+		}
+		name := e.Name()
+		ext := strings.ToLower(filepath.Ext(name))
+		if _, ok := imageExts[ext]; !ok {
+			continue
+		}
+		full := filepath.Join(imgDir, name)
+		data, err := os.ReadFile(full)
+		if err != nil {
+			fmt.Printf("  ⚠️  读取图片失败 %s: %v\n", name, err)
+			continue
+		}
+		img := &Image{Title: articleTitle, Name: name, Data: data}
+		url := fmt.Sprintf("%s/api/image", strings.TrimRight(server, "/"))
+		jb, _ := json.Marshal(img)
+		req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(jb))
+		if err != nil {
+			fmt.Printf("  ❌ 构建请求失败 %s: %v\n", name, err)
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if secret != "" {
+			req.Header.Set("Authorization", "Bearer "+secret)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			fmt.Printf("  ❌ 上传失败 %s: %v\n", name, err)
+			continue
+		}
+		rb, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			fmt.Printf("  ❌ 上传失败 %s: %s %s\n", name, resp.Status, string(rb))
+			continue
+		}
+		fmt.Printf("  🖼️  %s 上传成功\n", name)
+		count++
+	}
+	if count > 0 {
+		fmt.Printf("  共上传图片 %d 张 (文章: %s)\n", count, articleTitle)
+	}
+	return count, nil
+}
+
 func deleteArticle(title string) error {
 	url := fmt.Sprintf("%s/api/article/%s", strings.TrimRight(Cfg.Server, "/"), urlEscape(title))
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
@@ -250,6 +337,8 @@ func runPush(args []string) error {
 		if err := pushOne(*server, *token, meta, body); err != nil {
 			fmt.Printf("❌ %s 失败: %v\n", meta.Title, err)
 		} else {
+			// 上传成功后尝试上传图片
+			_, _ = pushImages(*server, *token, meta.Title, p)
 			count++
 		}
 		return nil
@@ -372,6 +461,11 @@ func main() {
 		}
 	case "create":
 		if err := runCreate(os.Args[2:]); err != nil {
+			fmt.Println("错误:", err)
+			os.Exit(1)
+		}
+	case "delete":
+		if err := runDelete(os.Args[2:]); err != nil {
 			fmt.Println("错误:", err)
 			os.Exit(1)
 		}

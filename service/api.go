@@ -60,6 +60,12 @@ func (s *BlogService) GetArticleSummary(c *gin.Context) {
 	}
 
 	query := s.DB.Model(&models.ArticleSummary{})
+	// 关键词搜索（title/summary 模糊匹配）
+	q := strings.TrimSpace(c.Query("q"))
+	if q != "" {
+		like := "%" + q + "%"
+		query = query.Where("title LIKE ? OR summary LIKE ?", like, like)
+	}
 	if len(filters) == 1 {
 		query = query.Where("category = ?", filters[0])
 	} else if len(filters) > 1 {
@@ -212,4 +218,86 @@ func (s *BlogService) DeleteArticle(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"msg": "successfully deleted article"})
+}
+
+// SearchArticle 使用 MySQL FULLTEXT 在正文 Content 上进行全文搜索
+// 路由: GET /api/search?q=keyword&page=1&pageSize=10
+// 返回值结构与 GetArticleSummary 保持一致: { articles, total, page, maxPage }
+func (s *BlogService) SearchArticle(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		c.JSON(400, gin.H{"msg": "missing query q"})
+		return
+	}
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	pageSize, err := strconv.Atoi(c.Query("pageSize"))
+	if err != nil || pageSize <= 0 {
+		pageSize = 10
+	}
+
+	// 统计匹配总数（以详情表为准，Title 唯一）
+	var total int64
+	if err := s.DB.Raw(countSQL, q).Scan(&total).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+	// FULLTEXT 在中文环境常因最小分词长度或停用词导致 0 结果；若查询包含 CJK 则回退 LIKE
+	usedLike := false
+	if total == 0 && containsCJK(q) {
+		likeTerm := "%" + q + "%"
+		if err := s.DB.Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
+			c.JSON(500, gin.H{"msg": "server error"})
+			return
+		}
+		usedLike = true
+	}
+	if total == 0 {
+		c.JSON(200, gin.H{"articles": []models.ArticleSummary{}, "total": 0, "page": page, "maxPage": 0})
+		return
+	}
+	if (int64(page)-1)*int64(pageSize) >= total {
+		c.JSON(404, gin.H{"msg": "no more articles"})
+		return
+	}
+
+	// 选出摘要列表
+	// FULLTEXT 模式按相关性排；LIKE 模式按更新时间排序
+	var articles []models.ArticleSummary
+	if usedLike {
+		likeTerm := "%" + q + "%"
+		if err := s.DB.Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+			c.JSON(500, gin.H{"msg": "server error"})
+			return
+		}
+	} else if err := s.DB.Raw(listSQL, q, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"articles": articles,
+		"total":    total,
+		"page":     page,
+		"maxPage":  (total + int64(pageSize) - 1) / int64(pageSize),
+	})
+}
+
+// containsCJK 粗略判断查询字符串中是否包含中日韩统一表意文字（CJK Unified Ideographs）
+func containsCJK(s string) bool {
+	for _, r := range s {
+		// 常用中日韩汉字范围：
+		if (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
+			(r >= 0x3400 && r <= 0x4DBF) || // CJK Unified Ideographs Extension A
+			(r >= 0x20000 && r <= 0x2A6DF) || // Extension B
+			(r >= 0x2A700 && r <= 0x2B73F) || // Extension C
+			(r >= 0x2B740 && r <= 0x2B81F) || // Extension D
+			(r >= 0x2B820 && r <= 0x2CEAF) || // Extension E
+			(r >= 0xF900 && r <= 0xFAFF) { // CJK Compatibility Ideographs
+			return true
+		}
+	}
+	return false
 }

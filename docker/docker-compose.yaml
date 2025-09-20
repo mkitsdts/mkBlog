@@ -18,7 +18,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/dockerfile
     container_name: mkblog-app
     restart: always
     depends_on:
@@ -26,14 +26,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_HOST=db
+      - DB_HOST=mkblog-db
       - DB_PORT=3306
       - DB_USER=mkblog
       - DB_PASSWORD=mkblog
       - DB_NAME=mkblog
-      - TLS_ENABLE=true
-      - TLS_CERT=./static/server.crt
-      - TLS_KEY=./static/server.key
 
 volumes:
   db_data:

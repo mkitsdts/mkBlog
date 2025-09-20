@@ -48,12 +48,10 @@ func LoadConfig() error {
 		slog.Warn("config.yaml not found, using environment variables or defaults")
 	} else {
 		defer file.Close()
+		if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
+			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
+		}
 	}
-
-	if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
-		slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
-	}
-
 	if host := os.Getenv("DB_HOST"); host != "" {
 		Cfg.MySQL.Host = host
 	} else if Cfg.MySQL.Host == "" {
@@ -106,6 +104,19 @@ func LoadConfig() error {
 		Cfg.TLS.Key = "localhost.key"
 		slog.Warn("TLS key not set, defaulting to localhost.key")
 	}
+
+	if auth := os.Getenv("AUTH_ENABLE"); auth != "" {
+		Cfg.Auth.Enabled = auth == "true" || auth == "1"
+	}
+
+	if secret := os.Getenv("AUTH_SECRET"); secret != "" {
+		Cfg.Auth.Secret = secret
+	} else if Cfg.Auth.Secret == "" {
+		Cfg.Auth.Secret = "mk,.b!!@/log2414sdsa1faS'221"
+		slog.Warn("Auth secret not set, using default (insecure)")
+	}
+
+	slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 
 	return nil
 }

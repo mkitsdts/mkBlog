@@ -1,24 +1,26 @@
 mysql:
-    host: localhost     # 数据库地址
-    port: 3306          # 数据库端口
-    user: mkblog        # 数据库用户
-    password: mkblog    # 数据库密码
-    name: mkblog        # 数据库名称
+  host: mkblog-db     # 数据库地址
+  port: 3306          # 数据库端口
+  user: mkblog        # 数据库用户
+  password: mkblog    # 数据库密码
+  name: mkblog        # 数据库名称
 
 tls:
-    enabled: true
-    cert: ./static/server.crt   # TLS证书文件路径
-    key: ./static/server.key    # TLS密钥文件路径
+  enabled: false              # 是否启用TLS
+  cert: ./static/server.crt   # TLS证书文件路径
+  key: ./static/server.key    # TLS密钥文件路径
 
 auth:
-    enabled: true               # 是否启用身份验证
-    secret: "mk,.b!!@/log2414sdsa1faS'221" # 自行设置验证密码
+  enabled: false                         # 是否启用身份验证
+  secret: "mk,.b!!@/log2414sdsa1faS'221" # 自行设置验证密码
 
 server:
-    port: 8080                  # 服务器端口
-    imageSavePath: ./static/images # 图片保存路径
+  port: 8080                  # 服务器端口
+  imageSavePath: ./static/images # 图片保存路径
+  devmode: true
 
 site:
-    signature: "鼠鼠是穿越者..."          # 个性签名
-    avatarPath: avatar.jpg              # 头像路径
-    server: https://mkitsdts.top:8080   # 服务器地址(端口为80/443时后面不需要加端口号)
+  signature: "鼠鼠是穿越者..."          # 个性签名
+  avatarPath: avatar.jpg              # 头像路径
+  server: http://localhost:8080   # 服务器地址(端口为80/443时后面不需要加端口号)
+  devmode: true                  # 开发模式，启用后前端使用未压缩的资源文件

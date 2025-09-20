@@ -22,6 +22,20 @@
         </div>
       </el-aside>
       <el-main>
+        <div class="toolbar">
+          <el-input
+            v-model="keyword"
+            placeholder="搜索标题或摘要..."
+            clearable
+            class="search-input"
+            @keyup.enter="doSearch"
+            @clear="clearSearch"
+          >
+            <template #append>
+              <el-button type="primary" @click="doSearch">搜索</el-button>
+            </template>
+          </el-input>
+        </div>
         <div class="blog-list">
           <el-card
             v-for="article in articles" :key="article.title"
@@ -84,6 +98,7 @@ export default {
   const avatarUrl = ref('');
   const signature = ref('');
   const articles = ref([]);
+  const keyword = ref('');
   const categories = ref([]);
   const selectedCategories = ref([]);
     const currentPage = ref(1);
@@ -92,7 +107,14 @@ export default {
 
   const fetchArticles = async (page) => {
       try {
-    const response = await api.getArticles(page, pageSize.value, selectedCategories.value);
+    const kw = keyword.value.trim();
+    let response;
+    if (kw) {
+      // 全文搜索接口不支持分类过滤，清空分类以避免误导
+      response = await api.searchArticles(kw, page, pageSize.value);
+    } else {
+      response = await api.getArticles(page, pageSize.value, selectedCategories.value);
+    }
         articles.value = response.data.articles;
         total.value = response.data.total;
       } catch (error) {
@@ -108,6 +130,10 @@ export default {
     };
 
     const toggleCategory = (c) => {
+      if (keyword.value.trim()) {
+        // 有关键词时，分类筛选无效，清空关键字以回到分类模式
+        keyword.value = ''
+      }
       const idx = selectedCategories.value.indexOf(c);
       if (idx === -1) {
         selectedCategories.value.push(c);
@@ -117,7 +143,11 @@ export default {
       currentPage.value = 1;
       fetchArticles(currentPage.value);
     };
-    const clearCategories = () => { selectedCategories.value = []; fetchArticles(1); };
+    const clearCategories = () => { 
+      if (keyword.value.trim()) keyword.value = '';
+      selectedCategories.value = []; 
+      fetchArticles(1); 
+    };
     const isActive = (c) => selectedCategories.value.includes(c);
 
     const router = useRouter();
@@ -130,6 +160,16 @@ export default {
     const handlePageChange = (page) => {
       currentPage.value = page;
       fetchArticles(page);
+    };
+
+    const doSearch = () => {
+      currentPage.value = 1;
+      fetchArticles(1);
+    };
+    const clearSearch = () => {
+      keyword.value = '';
+      currentPage.value = 1;
+      fetchArticles(1);
     };
 
     onMounted(async () => {
@@ -148,6 +188,7 @@ export default {
       avatarUrl,
       signature,
       articles,
+      keyword,
       currentPage,
       pageSize,
       total,
@@ -160,6 +201,8 @@ export default {
   goDetail,
   splitTags,
   formatDate,
+  doSearch,
+  clearSearch,
     };
   },
 };
@@ -175,6 +218,8 @@ export default {
   padding: 20px;
   border-radius: 10px;
 }
+.toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.search-input { max-width: 360px; }
 .category-panel { margin-top:20px; background:rgba(255,255,255,.7); padding:12px 14px; border-radius:10px; }
 .cat-title { margin:0 0 8px; font-size:14px; color:#333; }
 .cat-item { margin: 4px 6px 4px 0; cursor:pointer; user-select:none; }

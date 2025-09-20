@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,14 +30,22 @@ func NewRouter() (*gin.Engine, error) {
 		r.GET("/index.html", cache.Handler())
 		// SPA 回退
 		r.NoRoute(func(c *gin.Context) {
+			// 对 /api/* 返回 404 JSON，避免错误地返回 index.html
+			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+				c.JSON(404, gin.H{"msg": "not found"})
+				return
+			}
 			c.Request.URL.Path = "/"
 			cache.Handler()(c)
 		})
 	} else {
-		// 回退传统文件方式（构建缓存失败才走）
 		r.Static("/assets", "./static/assets")
 		r.StaticFile("/", "./static/index.html")
 		r.NoRoute(func(c *gin.Context) {
+			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+				c.JSON(404, gin.H{"msg": "not found"})
+				return
+			}
 			c.File("./static/index.html")
 		})
 	}
