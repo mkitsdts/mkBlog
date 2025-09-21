@@ -8,6 +8,10 @@ A minimal personal blog system written in Go, focused on content creation and kn
 
 ![Home](./docs/images/home.png)
 
+![Article](./docs/images/article.png)
+
+![ApplyFriend](./docs/images/apply_friend.png)
+
 ## Overview
 
 mkBlog is a lightweight personal blogging system supporting Markdown articles and categories. It is simple in design, easy to deploy, and easy to maintain.
@@ -26,13 +30,13 @@ mkBlog is a lightweight personal blogging system supporting Markdown articles an
 - ✅ Search: Keyword search
 - ✅ Pagination: Paged list
 - ✅ Friend links: Listing & application
-- ❌ Image management (planned)
+- ✅ Image management
 
 ## Quick Start
 
 ### Requirements
 - Go 1.24+
-- MySQL 8.0+
+- MySQL 8.0+(need ngram)
 
 ### Native Deployment
 
@@ -41,18 +45,9 @@ mkBlog is a lightweight personal blogging system supporting Markdown articles an
    CREATE DATABASE mkblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 
-2. Config (`backend/config.json`)
-   ```json
-   {
-     "mysql": {
-       "host": "localhost",
-       "port": "3306",
-       "user": "YOUR_USER",
-       "password": "YOUR_PASSWORD",
-       "name": "mkblog"
-     }
-   }
-   ```
+2. Config (`backend/config.yaml`)
+
+see config file and it's easy enough.
 
 3. Run
    ```bash
@@ -60,7 +55,7 @@ mkBlog is a lightweight personal blogging system supporting Markdown articles an
    go run main.go
    ```
 
-### Docker (MySQL Example)
+### Docker
 
 ```bash
 cd docker
@@ -69,7 +64,6 @@ docker-compose up -d
 
 ## Usage
 
-- Avatar and signature: edit frontend/src/config.js (temporary approach)
 - Upload articles: use CLI tool `mkblog push` (write Markdown with front matter)
 
 ## Access

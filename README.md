@@ -8,6 +8,10 @@
 
 ![Home](./docs/images/home.png)
 
+![Article](./docs/images/article.png)
+
+![ApplyFriend](./docs/images/apply_friend.png)
+
 ## 项目介绍
 
 mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章分类。系统设计简洁，易于部署和维护。
