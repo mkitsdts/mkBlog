@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"log/slog"
+	"mkBlog/config"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,12 @@ func NewRouter() (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
-	r.SetTrustedProxies([]string{"127.0.0.1", "192.168.1.100"})
+
+	// 启用限流器
+	r.Use(RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+
+	// 允许本地访问
+	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// 构建静态资源内存缓存（假设构建产物都放在 ./static）
 	cache, err := BuildAssetCache("./static")

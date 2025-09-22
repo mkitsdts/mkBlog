@@ -30,6 +30,11 @@ type ServerConfig struct {
 	Port          int    `json:"port" yaml:"port"`
 	Host          string `json:"host" yaml:"host"`
 	ImageSavePath string `json:"imageSavePath" yaml:"imageSavePath"`
+	Limiter       struct {
+		Requests int `json:"requests" yaml:"requests"`
+		Duration int `json:"duration" yaml:"duration"`
+	} `json:"limiter" yaml:"limiter"`
+	Devmode bool `json:"devmode" yaml:"devmode"`
 }
 
 type Config struct {
@@ -51,69 +56,79 @@ func LoadConfig() error {
 		if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
 			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 		}
+		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
+		return nil
 	}
 	if host := os.Getenv("DB_HOST"); host != "" {
 		Cfg.MySQL.Host = host
-	} else if Cfg.MySQL.Host == "" {
+	} else {
 		Cfg.MySQL.Host = "localhost"
 		slog.Warn("DB host not set, defaulting to localhost")
 	}
 
 	if port := os.Getenv("DB_PORT"); port != "" {
 		Cfg.MySQL.Port = port
-	} else if Cfg.MySQL.Port == "" {
+	} else {
 		Cfg.MySQL.Port = "3306"
 		slog.Warn("DB port not set, defaulting to 3306")
 	}
 
 	if user := os.Getenv("DB_USER"); user != "" {
 		Cfg.MySQL.User = user
-	} else if Cfg.MySQL.User == "" {
+	} else {
 		Cfg.MySQL.User = "root"
 		slog.Warn("DB user not set, defaulting to root")
 	}
 
 	if password := os.Getenv("DB_PASSWORD"); password != "" {
 		Cfg.MySQL.Password = password
-	} else if Cfg.MySQL.Password == "" {
+	} else {
 		Cfg.MySQL.Password = "root"
 		slog.Warn("DB password not set, defaulting to root")
 	}
 
 	if name := os.Getenv("DB_NAME"); name != "" {
 		Cfg.MySQL.Name = name
-	} else if Cfg.MySQL.Name == "" {
+	} else {
 		Cfg.MySQL.Name = "mkblog"
 		slog.Warn("DB name not set, defaulting to mkblog")
-	}
-
-	if tls := os.Getenv("TLS_ENABLE"); tls != "" {
-		Cfg.TLS.Enabled = tls == "true" || tls == "1"
-	}
-
-	if cert := os.Getenv("TLS_CERT"); cert != "" {
-		Cfg.TLS.Cert = cert
-	} else if Cfg.TLS.Cert == "" {
-		Cfg.TLS.Cert = "localhost.crt"
-		slog.Warn("TLS cert not set, defaulting to localhost.crt")
-	}
-
-	if key := os.Getenv("TLS_KEY"); key != "" {
-		Cfg.TLS.Key = key
-	} else if Cfg.TLS.Key == "" {
-		Cfg.TLS.Key = "localhost.key"
-		slog.Warn("TLS key not set, defaulting to localhost.key")
 	}
 
 	if auth := os.Getenv("AUTH_ENABLE"); auth != "" {
 		Cfg.Auth.Enabled = auth == "true" || auth == "1"
 	}
 
-	if secret := os.Getenv("AUTH_SECRET"); secret != "" {
-		Cfg.Auth.Secret = secret
-	} else if Cfg.Auth.Secret == "" {
-		Cfg.Auth.Secret = "mk,.b!!@/log2414sdsa1faS'221"
-		slog.Warn("Auth secret not set, using default (insecure)")
+	if Cfg.Auth.Enabled {
+		if secret := os.Getenv("AUTH_SECRET"); secret != "" {
+			Cfg.Auth.Secret = secret
+		} else {
+			Cfg.Auth.Secret = ""
+			slog.Warn("Auth secret not set, using default (insecure)")
+		}
+	}
+
+	if tls := os.Getenv("TLS_ENABLE"); tls != "" {
+		Cfg.TLS.Enabled = tls == "true" || tls == "1"
+	}
+
+	if !Cfg.TLS.Enabled {
+		slog.Info("loaded configuration successfully", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
+		slog.Warn("TLS is disabled, consider enabling it in production environments")
+		return nil
+	}
+
+	if cert := os.Getenv("TLS_CERT"); cert != "" {
+		Cfg.TLS.Cert = cert
+	} else {
+		Cfg.TLS.Cert = "localhost.crt"
+		slog.Warn("TLS cert not set, defaulting to localhost.crt")
+	}
+
+	if key := os.Getenv("TLS_KEY"); key != "" {
+		Cfg.TLS.Key = key
+	} else {
+		Cfg.TLS.Key = "localhost.key"
+		slog.Warn("TLS key not set, defaulting to localhost.key")
 	}
 
 	slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)

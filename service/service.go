@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"mkBlog/config"
+	"mkBlog/pkg"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,7 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 	}
 
 	if cfg.TLS.Enabled {
+		r.Use(pkg.AuthRequired())
 		srv := &http.Server{
 			Addr:    ":8080",
 			Handler: r,

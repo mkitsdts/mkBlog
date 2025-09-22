@@ -17,6 +17,9 @@ auth:
 server:
   port: 8080                  # 服务器端口
   imageSavePath: ./static/images # 图片保存路径
+  limiter:
+    requests: 100  # 每个IP在duration内最多允许的请求数
+    duration: 5    # 限制的时间窗口，单位为秒
   devmode: true
 
 site:
