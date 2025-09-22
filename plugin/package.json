@@ -1,0 +1,126 @@
+{
+    "name": "mkblog-plugin",
+    "displayName": "mkBlog Uploader",
+    "description": "将文件夹中的 Markdown 与同名图片文件夹上传到后端，并显示文章列表支持删除。",
+    "version": "0.0.1",
+    "publisher": "mkitsdts",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "mkBlog.uploadFolder",
+                "title": "mkBlog: 上传文件夹为博客"
+            },
+            {
+                "command": "mkBlog.refreshArticles",
+                "title": "mkBlog: 刷新文章列表"
+            },
+            {
+                "command": "mkBlog.deleteArticle",
+                "title": "mkBlog: 删除文章"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "mkBlog",
+                    "title": "mkBlog",
+                    "icon": "media/mkblog.svg"
+                }
+            ]
+        },
+        "views": {
+            "mkBlog": [
+                {
+                    "id": "mkBlog.articles",
+                    "name": "文章"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "mkBlog.refreshArticles",
+                    "when": "view == mkBlog.articles",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "mkBlog.uploadFolder",
+                    "when": "view == mkBlog.articles",
+                    "group": "navigation@0"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "mkBlog.deleteArticle",
+                    "when": "view == mkBlog.articles",
+                    "group": "inline@1"
+                }
+            ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "mkBlog 设置",
+            "properties": {
+                "mkBlog.uploadArticleUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000/article/{title}",
+                    "description": "文章上传接口 URL（PUT Article JSON）。支持占位符 {title}，将以文件名替换。"
+                },
+                "mkBlog.uploadImageUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000/image",
+                    "description": "图片上传接口 URL（PUT 单张 Image JSON，包含 title/data/name）。"
+                },
+                "mkBlog.author": {
+                    "type": "string",
+                    "default": "",
+                    "description": "默认作者（Article.Author）；留空则不填。"
+                },
+                "mkBlog.defaultCategory": {
+                    "type": "string",
+                    "default": "General",
+                    "description": "默认分类（Article.Category）。"
+                },
+                "mkBlog.listUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000/api/articles",
+                    "description": "文章列表接口 URL（GET）"
+                },
+                "mkBlog.deleteUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000/article/{title}",
+                    "description": "删除文章接口 URL，支持占位符 {title}（用文件名/标题替换）或 {id}。"
+                },
+                "mkBlog.authToken": {
+                    "type": "string",
+                    "default": "",
+                    "description": "可选的认证 Token，将以 Authorization: Bearer <token> 发送"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run build",
+        "build": "tsc -p ./",
+        "watch": "tsc -w -p ./",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.50",
+        "@types/vscode": "^1.90.0",
+        "esbuild": "^0.23.0",
+        "typescript": "^5.5.4",
+        "vsce": "^2.15.0"
+    },
+    "dependencies": {}
+}
