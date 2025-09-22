@@ -33,8 +33,8 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 		api.GET("/friends", service.GetFriendList)
 		api.POST("/friends", service.ApplyFriend)
 		if cfg.Auth.Enabled {
-			api.PUT("/article/:title", service.AddArticle, service.Auth())
-			api.PUT("/image", service.AddImage, service.Auth())
+			api.PUT("/article/:title", service.AddArticle, pkg.AuthRequired())
+			api.PUT("/image", service.AddImage, pkg.AuthRequired())
 		} else {
 			api.PUT("/article/:title", service.AddArticle)
 			api.PUT("/image", service.AddImage)
@@ -42,7 +42,6 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 	}
 
 	if cfg.TLS.Enabled {
-		r.Use(pkg.AuthRequired())
 		srv := &http.Server{
 			Addr:    ":8080",
 			Handler: r,
@@ -64,15 +63,4 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 		}
 	}
 
-}
-
-func (s *BlogService) Auth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		auth := c.Request.Header.Get("Authorization")
-		if auth == "Bearer "+s.Cfg.Auth.Secret {
-			c.Next()
-		} else {
-			c.AbortWithStatus(http.StatusUnauthorized)
-		}
-	}
 }
