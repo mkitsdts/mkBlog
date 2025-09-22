@@ -15,15 +15,15 @@ auth:
   secret: "mk,.b!!@/log2414sdsa1faS'221" # 自行设置验证密码
 
 server:
-  port: 8080                  # 服务器端口
+  port: 8080                     # 服务器端口
   imageSavePath: ./static/images # 图片保存路径
   limiter:
-    requests: 100  # 每个IP在duration内最多允许的请求数
-    duration: 5    # 限制的时间窗口，单位为秒
+    requests: 100                # 每个IP在duration内最多允许的请求数
+    duration: 5                  # 限制的时间窗口，单位为秒
   devmode: true
 
 site:
-  signature: "鼠鼠是穿越者..."          # 个性签名
-  avatarPath: avatar.jpg              # 头像路径
+  signature: "鼠鼠是穿越者..."      # 个性签名
+  avatarPath: avatar.jpg          # 头像路径
   server: http://localhost:8080   # 服务器地址(端口为80/443时后面不需要加端口号)
-  devmode: true                  # 开发模式，启用后前端使用未压缩的资源文件
+  devmode: true                   # 开发模式，启用后前端使用未压缩的资源文件

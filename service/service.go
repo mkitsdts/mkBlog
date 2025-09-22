@@ -35,9 +35,11 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 		if cfg.Auth.Enabled {
 			api.PUT("/article/:title", service.AddArticle, pkg.AuthRequired())
 			api.PUT("/image", service.AddImage, pkg.AuthRequired())
+			api.DELETE("/article/:title", service.DeleteArticle, pkg.AuthRequired())
 		} else {
 			api.PUT("/article/:title", service.AddArticle)
 			api.PUT("/image", service.AddImage)
+			api.DELETE("/article/:title", service.DeleteArticle)
 		}
 	}
 
