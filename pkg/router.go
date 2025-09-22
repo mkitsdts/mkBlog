@@ -28,6 +28,15 @@ func NewRouter() (*gin.Engine, error) {
 	// 手工注册处理静态文件
 	// 1. config.yaml 仍直接文件读取（便于随时改），如果想缓存也可仿照处理
 	r.StaticFile("/config.yaml", "./config.yaml")
+	r.StaticFS("/images", gin.Dir(config.Cfg.Server.ImageSavePath, false))
+
+	// 可选：为图片添加缓存头
+	r.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/images/") {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		c.Next()
+	})
 
 	// 2. assets & index 走内存
 	if cache != nil {
@@ -47,6 +56,7 @@ func NewRouter() (*gin.Engine, error) {
 	} else {
 		r.Static("/assets", "./static/assets")
 		r.StaticFile("/", "./static/index.html")
+		r.StaticFS("/images", gin.Dir(config.Cfg.Server.ImageSavePath, false))
 		r.NoRoute(func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 				c.JSON(404, gin.H{"msg": "not found"})

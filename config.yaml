@@ -11,7 +11,7 @@ tls:
   key: ./static/server.key    # TLS密钥文件路径
 
 auth:
-  enabled: false                         # 是否启用身份验证
+  enabled: true                         # 是否启用身份验证
   secret: "mk,.b!!@/log2414sdsa1faS'221" # 自行设置验证密码
 
 server:

@@ -3,7 +3,6 @@ package service
 import (
 	"log/slog"
 	"mkBlog/models"
-	"mkBlog/pkg"
 	"path"
 	"strconv"
 	"strings"
@@ -169,13 +168,17 @@ func (s *BlogService) AddArticle(c *gin.Context) {
 	}
 
 	if result := s.DB.Create(&artd); result.Error != nil {
-		c.JSON(500, gin.H{"msg": "server error"})
-		return
+		if result := s.DB.Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
+			c.JSON(500, gin.H{"msg": "server error"})
+			return
+		}
 	}
 
 	if result := s.DB.Create(&arts); result.Error != nil {
-		c.JSON(500, gin.H{"msg": "server error"})
-		return
+		if result := s.DB.Where("title = ?", article.Title).Updates(&arts); result.Error != nil {
+			c.JSON(500, gin.H{"msg": "server error"})
+			return
+		}
 	}
 	c.JSON(200, gin.H{"msg": "successfully added article"})
 }
@@ -190,7 +193,7 @@ func (s *BlogService) AddImage(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "invalid image data"})
 		return
 	}
-	if err := pkg.SaveImage(img); err != nil {
+	if err := SaveImage(img); err != nil {
 		c.JSON(500, gin.H{"msg": "failed to save image"})
 		return
 	}
@@ -198,21 +201,18 @@ func (s *BlogService) AddImage(c *gin.Context) {
 }
 
 func (s *BlogService) DeleteArticle(c *gin.Context) {
-	type Title struct {
-		Title string `json:"title"`
-	}
-	var title Title
-	if err := c.BindJSON(&title); err != nil {
-		c.JSON(400, gin.H{"msg": "invalid request body"})
+	title := strings.TrimSpace(c.Param("title"))
+	if title == "" {
+		c.JSON(400, gin.H{"msg": "invalid title"})
 		return
 	}
 
-	if err := s.DB.Where("title = ?", title.Title).Delete(&models.ArticleDetail{}).Error; err != nil {
+	if err := s.DB.Where("title = ?", title).Delete(&models.ArticleDetail{}).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
 
-	if err := s.DB.Where("title = ?", title.Title).Delete(&models.ArticleSummary{}).Error; err != nil {
+	if err := s.DB.Where("title = ?", title).Delete(&models.ArticleSummary{}).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}

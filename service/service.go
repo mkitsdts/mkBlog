@@ -6,6 +6,7 @@ import (
 	"mkBlog/config"
 	"mkBlog/pkg"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,6 +23,11 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 		DB:     db,
 		Router: r,
 		Cfg:    cfg,
+	}
+
+	if err := os.MkdirAll(cfg.Server.ImageSavePath, 0755); err != nil {
+		slog.Error("failed to create image save path", "error", err)
+		return
 	}
 
 	api := r.Group("/api")
