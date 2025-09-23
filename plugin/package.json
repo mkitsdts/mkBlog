@@ -1,7 +1,7 @@
 {
     "name": "mkblog-plugin",
     "displayName": "mkBlog Uploader",
-    "description": "将文件夹中的 Markdown 与同名图片文件夹上传到后端，并显示文章列表支持删除。",
+    "description": "将文件夹中的 Markdown 与同名图片文件夹上传到后端，并显示文章列表支持删除�?",
     "version": "0.0.1",
     "publisher": "mkitsdts",
     "engines": {
@@ -74,37 +74,37 @@
                 "mkBlog.uploadArticleUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/article/{title}",
-                    "description": "文章上传接口 URL（PUT Article JSON）。支持占位符 {title}，将以文件名替换。"
+                    "description": "文章上传接口 URL（PUT Article JSON）。支持占位符 {title}，将以文件名替换�?"
                 },
                 "mkBlog.uploadImageUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/image",
-                    "description": "图片上传接口 URL（PUT 单张 Image JSON，包含 title/data/name）。"
+                    "description": "图片上传接口 URL（PUT 单张 Image JSON，包�? title/data/name）�?"
                 },
                 "mkBlog.author": {
                     "type": "string",
                     "default": "",
-                    "description": "默认作者（Article.Author）；留空则不填。"
+                    "description": "默认作者（Article.Author）；留空则不填�?"
                 },
                 "mkBlog.defaultCategory": {
                     "type": "string",
                     "default": "General",
-                    "description": "默认分类（Article.Category）。"
+                    "description": "默认分类（Article.Category）�?"
                 },
                 "mkBlog.listUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/api/articles",
-                    "description": "文章列表接口 URL（GET）"
+                    "description": "文章列表接口 URL（GET�?"
                 },
                 "mkBlog.deleteUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/article/{title}",
-                    "description": "删除文章接口 URL，支持占位符 {title}（用文件名/标题替换）或 {id}。"
+                    "description": "删除文章接口 URL，支持占位符 {title}（用文件�?/标题替换）或 {id}�?"
                 },
                 "mkBlog.authToken": {
                     "type": "string",
                     "default": "",
-                    "description": "可选的认证 Token，将以 Authorization: Bearer <token> 发送"
+                    "description": "可选的认证 Token，将�? Authorization: Bearer <token> 发�?"
                 }
             }
         }
@@ -120,7 +120,7 @@
         "@types/vscode": "^1.90.0",
         "esbuild": "^0.25.0",
         "typescript": "^5.5.4",
-        "vsce": "^2.15.0"
+        "vsce": ">=3.6.0"
     },
     "dependencies": {}
 }
