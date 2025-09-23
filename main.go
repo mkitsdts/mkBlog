@@ -11,14 +11,15 @@ func main() {
 	if err := config.LoadConfig(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}
-	db, err := pkg.NewDatabase()
-	if err != nil {
+	if err := pkg.InitDatabase(); err != nil {
 		panic("failed to connect to database: " + err.Error())
 	}
-	r, err := pkg.NewRouter()
-	if err != nil {
+	if err := pkg.InitRouter(); err != nil {
 		panic("failed to create router: " + err.Error())
 	}
 
-	service.NewBlogService(db, r, config.Cfg)
+	if s, err := service.NewBlogService(); err == nil {
+		s.Start()
+	}
+
 }

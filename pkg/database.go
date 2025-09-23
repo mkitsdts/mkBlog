@@ -10,8 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewDatabase() (*gorm.DB, error) {
-	var db *gorm.DB
+var db *gorm.DB
+
+func GetDatabase() *gorm.DB {
+	return db
+}
+
+func InitDatabase() error {
 	var err error
 	dsn := config.Cfg.MySQL.User + ":" + config.Cfg.MySQL.Password +
 		"@tcp(" + config.Cfg.MySQL.Host + ":" + config.Cfg.MySQL.Port + ")/" +
@@ -26,7 +31,7 @@ func NewDatabase() (*gorm.DB, error) {
 		}
 		time.Sleep(time.Duration(i<<2) * time.Microsecond) // 等待100毫秒后重试
 		if i == retryTimes-1 {
-			return nil, err
+			return err
 		}
 	}
 	// 自动迁移
@@ -34,7 +39,7 @@ func NewDatabase() (*gorm.DB, error) {
 		&models.ArticleDetail{},
 		&models.Friend{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	slog.Info("database migration completed")
 
@@ -43,16 +48,13 @@ func NewDatabase() (*gorm.DB, error) {
 	if err := db.Model(&models.ArticleSummary{}).Count(&count).Error; err == nil && count == 0 {
 		summary := models.ArticleSummary{
 			Title:    "Hello World",
-			UpdateAt: time.Now().Format("2006-01-02 15:04:05"),
 			Category: "General",
 			Summary:  "欢迎使用博客，您可以删除这篇文章或编辑它。",
 		}
 		detail := models.ArticleDetail{
-			Title:    summary.Title,
-			CreateAt: summary.UpdateAt,
-			UpdateAt: summary.UpdateAt,
-			Author:   "system",
-			Content:  "# Hello World\n\n欢迎使用博客，您可以删除这篇文章或编辑它。",
+			Title:   summary.Title,
+			Author:  "system",
+			Content: "# Hello World\n\n欢迎使用博客，您可以删除这篇文章或编辑它。",
 		}
 		if err := db.Create(&summary).Error; err != nil {
 			slog.Warn("failed to insert default article summary", "error", err)
@@ -65,5 +67,5 @@ func NewDatabase() (*gorm.DB, error) {
 
 	// FULLTEXT 索引由 GORM tag 自动处理（models.ArticleDetail.Content 上的 index:ft_content,class:FULLTEXT,option:WITH PARSER ngram）
 
-	return db, nil
+	return nil
 }

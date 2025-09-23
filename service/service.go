@@ -5,54 +5,49 @@ import (
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/pkg"
+	"mkBlog/service/api"
 	"net/http"
 	"os"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type BlogService struct {
-	DB     *gorm.DB
-	Router *gin.Engine
-	Cfg    *config.Config
 }
 
-func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
-	service := &BlogService{
-		DB:     db,
-		Router: r,
-		Cfg:    cfg,
-	}
+func NewBlogService() (*BlogService, error) {
+	var service BlogService
 
-	if err := os.MkdirAll(cfg.Server.ImageSavePath, 0755); err != nil {
+	if err := os.MkdirAll(config.Cfg.Server.ImageSavePath, 0755); err != nil {
 		slog.Error("failed to create image save path", "error", err)
-		return
+		return nil, err
 	}
 
-	api := r.Group("/api")
+	a := pkg.GetRouter().Group("/api")
 	{
-		api.GET("/articles", service.GetArticleSummary)
-		api.GET("/article/:title", service.GetArticleDetail)
-		api.GET("/search", service.SearchArticle)
-		api.GET("/categories", service.GetCategories)
-		api.GET("/friends", service.GetFriendList)
-		api.POST("/friends", service.ApplyFriend)
-		if cfg.Auth.Enabled {
-			api.PUT("/article/:title", service.AddArticle, pkg.AuthRequired())
-			api.PUT("/image", service.AddImage, pkg.AuthRequired())
-			api.DELETE("/article/:title", service.DeleteArticle, pkg.AuthRequired())
+		a.GET("/articles", api.GetArticleSummary)
+		a.GET("/article/:title", api.GetArticleDetail)
+		a.GET("/search", api.SearchArticle)
+		a.GET("/categories", api.GetCategories)
+		a.GET("/friends", api.GetFriendList)
+		a.POST("/friends", api.ApplyFriend)
+
+		if config.Cfg.Auth.Enabled {
+			a.PUT("/article/:title", api.AddArticle, pkg.AuthRequired())
+			a.PUT("/image", api.AddImage, pkg.AuthRequired())
+			a.DELETE("/article/:title", api.DeleteArticle, pkg.AuthRequired())
 		} else {
-			api.PUT("/article/:title", service.AddArticle)
-			api.PUT("/image", service.AddImage)
-			api.DELETE("/article/:title", service.DeleteArticle)
+			a.PUT("/article/:title", api.AddArticle)
+			a.PUT("/image", api.AddImage)
+			a.DELETE("/article/:title", api.DeleteArticle)
 		}
 	}
+	return &service, nil
+}
 
-	if cfg.TLS.Enabled {
+func (s *BlogService) Start() {
+	if config.Cfg.TLS.Enabled {
 		srv := &http.Server{
 			Addr:    ":8080",
-			Handler: r,
+			Handler: pkg.GetRouter(),
 			TLSConfig: &tls.Config{
 				MinVersion:               tls.VersionTLS12,
 				PreferServerCipherSuites: true,
@@ -62,13 +57,12 @@ func NewBlogService(db *gorm.DB, r *gin.Engine, cfg *config.Config) {
 			},
 		}
 		// Start HTTPS server
-		if err := srv.ListenAndServeTLS(cfg.TLS.Cert, cfg.TLS.Key); err != nil {
+		if err := srv.ListenAndServeTLS(config.Cfg.TLS.Cert, config.Cfg.TLS.Key); err != nil {
 			slog.Error("failed to start HTTPS server", "error", err)
 		}
 	} else {
-		if err := r.Run(":8080"); err != nil {
+		if err := pkg.GetRouter().Run(":8080"); err != nil {
 			slog.Error("failed to start HTTP server", "error", err)
 		}
 	}
-
 }

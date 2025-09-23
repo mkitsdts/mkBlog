@@ -1,4 +1,4 @@
-package service
+package api
 
 const listSQL = `
 		SELECT s.title, s.update_at, s.category, s.summary

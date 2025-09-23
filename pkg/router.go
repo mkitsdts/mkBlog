@@ -9,9 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter() (*gin.Engine, error) {
+var r *gin.Engine
+
+func GetRouter() *gin.Engine {
+	return r
+}
+
+func InitRouter() error {
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
 	// 启用限流器
@@ -68,5 +73,5 @@ func NewRouter() (*gin.Engine, error) {
 		})
 	}
 
-	return r, nil
+	return nil
 }
