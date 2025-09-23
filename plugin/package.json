@@ -1,7 +1,7 @@
 {
     "name": "mkblog-plugin",
     "displayName": "mkBlog Uploader",
-    "description": "将文件夹中的 Markdown 与同名图片文件夹上传到后端，并显示文章列表支持删除�?",
+    "description": "Upload Markdown Files in folder and the images to server. Support drag&drop images in markdown editor.",
     "version": "0.0.1",
     "publisher": "mkitsdts",
     "engines": {
@@ -18,15 +18,15 @@
         "commands": [
             {
                 "command": "mkBlog.uploadFolder",
-                "title": "mkBlog: 上传文件夹为博客"
+                "title": "mkBlog: Upload Folder as Blog"
             },
             {
                 "command": "mkBlog.refreshArticles",
-                "title": "mkBlog: 刷新文章列表"
+                "title": "mkBlog: Refresh Article List"
             },
             {
                 "command": "mkBlog.deleteArticle",
-                "title": "mkBlog: 删除文章"
+                "title": "mkBlog: Delete Article"
             }
         ],
         "viewsContainers": {
@@ -69,42 +69,42 @@
         },
         "configuration": {
             "type": "object",
-            "title": "mkBlog 设置",
+            "title": "mkBlog Settings",
             "properties": {
                 "mkBlog.uploadArticleUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/article/{title}",
-                    "description": "文章上传接口 URL（PUT Article JSON）。支持占位符 {title}，将以文件名替换�?"
+                    "description": "Article upload URL(PUT Article JSON)。Support {title} or {id} as placeholder"
                 },
                 "mkBlog.uploadImageUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/image",
-                    "description": "图片上传接口 URL（PUT 单张 Image JSON，包�? title/data/name）�?"
+                    "description": "Image upload URL(PUT Image JSON,includes title/data/name)"
                 },
                 "mkBlog.author": {
                     "type": "string",
                     "default": "",
-                    "description": "默认作者（Article.Author）；留空则不填�?"
+                    "description": "Default author(Article.Author)"
                 },
                 "mkBlog.defaultCategory": {
                     "type": "string",
                     "default": "General",
-                    "description": "默认分类（Article.Category）�?"
+                    "description": "Default category(Article.Category)"
                 },
                 "mkBlog.listUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/api/articles",
-                    "description": "文章列表接口 URL（GET�?"
+                    "description": "Article list API URL(GET)"
                 },
                 "mkBlog.deleteUrl": {
                     "type": "string",
                     "default": "http://localhost:3000/article/{title}",
-                    "description": "删除文章接口 URL，支持占位符 {title}（用文件�?/标题替换）或 {id}�?"
+                    "description": "Delete article API URL, support placeholder {title} (replace with filename/title) or {id}?"
                 },
                 "mkBlog.authToken": {
                     "type": "string",
                     "default": "",
-                    "description": "可选的认证 Token，将�? Authorization: Bearer <token> 发�?"
+                    "description": "Optional auth token, will be sent as Authorization: Bearer <token>"
                 }
             }
         }
@@ -120,7 +120,7 @@
         "@types/vscode": "^1.90.0",
         "esbuild": "^0.25.0",
         "typescript": "^5.5.4",
-        "vsce": ">=3.6.0"
+        "@vscode/vsce": "^3.6.1"
     },
     "dependencies": {}
 }
