@@ -31,6 +31,7 @@ mkBlog is a lightweight personal blogging system supporting Markdown articles an
 - ✅ Pagination: Paged list
 - ✅ Friend links: Listing & application
 - ✅ Image management
+- ✅ Article Comment
 
 ## Quick Start
 
@@ -83,7 +84,7 @@ TLS:
 - [x] Categories & search
 - [x] Friend links
 - [x] Responsive UI
-- [ ] Comments
+- [x] Comments
 - [ ] RSS feed
 - [ ] RSS feed
 - [ ] SEO optimization
