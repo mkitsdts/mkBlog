@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
+	"sync"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -11,8 +12,14 @@ import (
 )
 
 var db *gorm.DB
+var once sync.Once
 
 func GetDatabase() *gorm.DB {
+	once.Do(func() {
+		if err := InitDatabase(); err != nil {
+			slog.Error("failed to initialize database", "error", err)
+		}
+	})
 	return db
 }
 

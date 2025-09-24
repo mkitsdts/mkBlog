@@ -46,7 +46,7 @@ type Config struct {
 
 var Cfg *Config = &Config{}
 
-func LoadConfig() error {
+func init() {
 	// Fallback to config.yaml file if exists
 	file, err := os.Open("config.yaml")
 	if err != nil {
@@ -57,7 +57,7 @@ func LoadConfig() error {
 			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 		}
 		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
-		return nil
+		panic("Please switch to environment variable configuration for better security")
 	}
 	if host := os.Getenv("DB_HOST"); host != "" {
 		Cfg.MySQL.Host = host
@@ -114,7 +114,7 @@ func LoadConfig() error {
 	if !Cfg.TLS.Enabled {
 		slog.Info("loaded configuration successfully", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 		slog.Warn("TLS is disabled, consider enabling it in production environments")
-		return nil
+		panic("TLS is disabled, please enable it for better security")
 	}
 
 	if cert := os.Getenv("TLS_CERT"); cert != "" {
@@ -133,5 +133,4 @@ func LoadConfig() error {
 
 	slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 
-	return nil
 }
