@@ -16,9 +16,10 @@ func GetRouter() *gin.Engine {
 }
 
 func InitRouter() error {
+	r = gin.New()
 	gin.SetMode(gin.ReleaseMode)
+	r.UseH2C = true
 	r.Use(gin.Logger(), gin.Recovery())
-
 	// 启用限流器
 	r.Use(RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 
