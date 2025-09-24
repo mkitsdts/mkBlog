@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-
 	if err := pkg.InitRouter(); err != nil {
 		panic("failed to create router: " + err.Error())
 	}

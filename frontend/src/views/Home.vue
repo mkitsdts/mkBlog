@@ -81,7 +81,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
-import cfg from '@/config';
+import { loadConfig } from '@/config';
 
 export default {
   name: 'Home',
@@ -173,13 +173,13 @@ export default {
     };
 
     onMounted(async () => {
-      const conf = await cfg.loadConfig();
-      signature.value = conf.signature;
       try {
-        avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
-      } catch {
-        avatarUrl.value = '';
-      }
+        const conf = await loadConfig();
+        signature.value = conf.signature || '签名未配置';
+        try {
+          avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
+        } catch { avatarUrl.value = ''; }
+      } catch (e) { console.error('load config failed', e); }
       fetchCategories();
       fetchArticles(currentPage.value);
     });

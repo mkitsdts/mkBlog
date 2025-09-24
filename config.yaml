@@ -27,3 +27,4 @@ site:
   avatarPath: avatar.jpg          # 头像路径
   server: http://localhost:8080   # 服务器地址(端口为80/443时后面不需要加端口号)
   devmode: true                   # 开发模式，启用后前端使用未压缩的资源文件
+  comment_enabled: true           # 是否启用评论功能

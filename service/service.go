@@ -30,6 +30,9 @@ func NewBlogService() (*BlogService, error) {
 		a.GET("/friends", api.GetFriendList)
 		a.POST("/friends", api.ApplyFriend)
 
+		a.GET("/comments", api.GetComments)
+		a.POST("/comments", api.AddComment)
+
 		if config.Cfg.Auth.Enabled {
 			a.PUT("/article/:title", api.AddArticle, pkg.AuthRequired())
 			a.PUT("/image", api.AddImage, pkg.AuthRequired())

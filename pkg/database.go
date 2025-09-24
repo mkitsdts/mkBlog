@@ -44,7 +44,8 @@ func InitDatabase() error {
 	// 自动迁移
 	err = db.AutoMigrate(&models.ArticleSummary{},
 		&models.ArticleDetail{},
-		&models.Friend{})
+		&models.Friend{},
+		&models.Comment{})
 	if err != nil {
 		return err
 	}

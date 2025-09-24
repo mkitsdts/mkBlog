@@ -57,7 +57,7 @@ func init() {
 			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 		}
 		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
-		panic("Please switch to environment variable configuration for better security")
+		return // Loaded from file, skip env vars
 	}
 	if host := os.Getenv("DB_HOST"); host != "" {
 		Cfg.MySQL.Host = host
