@@ -25,7 +25,7 @@ func NewBlogService() (*BlogService, error) {
 	a := router.GetRouter().Group("/api")
 	{
 		a.GET("/articles", api.GetArticleSummary)
-		a.GET("/article/:title", api.GetArticleDetail)
+		a.GET("/article/:title", api.GetArticleDetail) // 限流，防止爆破
 		a.GET("/search", api.SearchArticle)
 		a.GET("/categories", api.GetCategories)
 		a.GET("/friends", api.GetFriendList)

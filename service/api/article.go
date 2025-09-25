@@ -8,6 +8,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -51,18 +52,31 @@ func UploadArticle(c *gin.Context) {
 		Summary:  summary,
 	}
 
-	if result := database.GetDatabase().Create(&artd); result.Error != nil {
-		if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
+	for i := range 3 {
+		if result := database.GetDatabase().Create(&artd); result.Error != nil {
+			if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
+				continue
+			} else if result := database.GetDatabase().Create(&arts); result.Error != nil {
+				if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error == nil {
+					break
+				}
+			} else {
+				break
+			}
+		} else {
+			if result := database.GetDatabase().Create(&arts); result.Error != nil {
+				if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error == nil {
+					break
+				}
+			} else {
+				break
+			}
+		}
+		if i == 2 {
 			c.JSON(500, gin.H{"msg": "server error"})
 			return
 		}
-	}
-
-	if result := database.GetDatabase().Create(&arts); result.Error != nil {
-		if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error != nil {
-			c.JSON(500, gin.H{"msg": "server error"})
-			return
-		}
+		time.Sleep(10 << i * time.Millisecond)
 	}
 	bloom.GetBloomFilter().Add([]byte(article.Title))
 	c.JSON(200, gin.H{"msg": "successfully added article"})
@@ -75,6 +89,13 @@ func GetArticleDetail(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "invalid title"})
 		return
 	}
+
+	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
+	if !bloom.GetBloomFilter().Exists([]byte(title)) {
+		c.JSON(404, gin.H{"msg": "article not found"})
+		return
+	}
+
 	var article models.ArticleDetail
 	safeTitle := path.Clean(title) // 防止路径遍历攻击
 	result := database.GetDatabase().Where("title = ?", safeTitle).First(&article)
@@ -104,8 +125,8 @@ func GetArticleSummary(c *gin.Context) {
 	multiParam := strings.TrimSpace(c.Query("categories"))
 	var filters []string
 	if multiParam != "" {
-		parts := strings.Split(multiParam, ",")
-		for _, p := range parts {
+		parts := strings.SplitSeq(multiParam, ",")
+		for p := range parts {
 			t := strings.TrimSpace(p)
 			if t != "" {
 				filters = append(filters, t)
@@ -226,14 +247,23 @@ func DeleteArticle(c *gin.Context) {
 		return
 	}
 
-	if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleDetail{}).Error; err != nil {
-		c.JSON(500, gin.H{"msg": "server error"})
+	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
+	if !bloom.GetBloomFilter().Exists([]byte(title)) {
+		c.JSON(404, gin.H{"msg": "article not found"})
 		return
 	}
 
-	if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleSummary{}).Error; err != nil {
-		c.JSON(500, gin.H{"msg": "server error"})
-		return
+	for i := range 3 {
+		if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleDetail{}).Error; err == nil {
+			if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleSummary{}).Error; err == nil {
+				break
+			}
+		}
+		if i == 2 {
+			c.JSON(500, gin.H{"msg": "server error"})
+			return
+		}
+		time.Sleep(10 << i * time.Millisecond)
 	}
 	bloom.GetBloomFilter().Remove([]byte(title))
 	c.JSON(200, gin.H{"msg": "successfully deleted article"})

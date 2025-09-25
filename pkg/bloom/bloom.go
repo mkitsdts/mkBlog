@@ -1,5 +1,10 @@
 package bloom
 
+import (
+	"mkBlog/models"
+	"mkBlog/pkg/database"
+)
+
 type BloomFilter struct {
 	bitset   []byte
 	bitcount []uint8
@@ -18,7 +23,7 @@ func GetBloomFilter() *BloomFilter {
 	return bf
 }
 
-func Init() error {
+func init() {
 	bf = &BloomFilter{
 		bitset:   make([]byte, byteSize),
 		bitcount: make([]uint8, byteSize),
@@ -46,7 +51,11 @@ func Init() error {
 			},
 		},
 	}
-	return nil
+	var titles []string
+	database.GetDatabase().Model(models.ArticleDetail{}).Select("title").Find(&titles)
+	for _, title := range titles {
+		bf.Add([]byte(title))
+	}
 }
 
 func (bf *BloomFilter) Add(data []byte) {
