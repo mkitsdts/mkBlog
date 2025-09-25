@@ -18,7 +18,7 @@ export async function findMarkdownFilesWithImageFolders(root: string): Promise<U
       const base = e.name.slice(0, -3); // remove .md
       const folder = path.join(root, base);
       const mdContent = await fs.readFile(mdPath, 'utf8');
-  const images: { name: string; buffer: Buffer }[] = [];
+      const images: { name: string; buffer: Buffer }[] = [];
       try {
         const imgEntries = await fs.readdir(folder, { withFileTypes: true });
         for (const ie of imgEntries) {

@@ -18,15 +18,15 @@
         "commands": [
             {
                 "command": "mkBlog.uploadFolder",
-                "title": "mkBlog: Upload Folder as Blog"
+                "title": "Upload"
             },
             {
                 "command": "mkBlog.refreshArticles",
-                "title": "mkBlog: Refresh Article List"
+                "title": "Refresh"
             },
             {
                 "command": "mkBlog.deleteArticle",
-                "title": "mkBlog: Delete Article"
+                "title": "Delete"
             }
         ],
         "viewsContainers": {
@@ -42,7 +42,8 @@
             "mkBlog": [
                 {
                     "id": "mkBlog.articles",
-                    "name": "文章"
+                    "name": "文章",
+                    "icon": "media/article.svg"
                 }
             ]
         },

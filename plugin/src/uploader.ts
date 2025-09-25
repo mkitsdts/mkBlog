@@ -2,12 +2,62 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { findMarkdownFilesWithImageFolders } from './utils/fs';
 
+function extractMeta(md: string): { author?: string; category?: string; content: string } {
+  let author: string | undefined;
+  let category: string | undefined;
+  let content = md;
+
+  // 1) YAML front matter: --- ... --- at file start
+  if (md.startsWith('---')) {
+    const end = md.indexOf('\n---', 3);
+    if (end !== -1) {
+      const fm = md.slice(3, end).split(/\r?\n/);
+      for (const line of fm) {
+        const m = line.match(/^\s*(author|category)\s*:\s*(.+)\s*$/i);
+        if (m) {
+          const key = m[1].toLowerCase();
+          const val = m[2].trim();
+          if (key === 'author' && val) author = val;
+          if (key === 'category' && val) category = val;
+        }
+      }
+      // remove front matter block including closing --- line
+      const after = md.slice(end + '\n---'.length);
+      // trim a single leading newline if exists
+      content = after.replace(/^\r?\n/, '');
+      return { author, category, content };
+    }
+  }
+
+  // 2) Simple top-of-file meta lines: e.g.
+  // author: mkitsdts
+  // category: language
+  const lines = md.split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) { i++; continue; }
+    const m = line.match(/^\s*(author|category)\s*:\s*(.+)\s*$/i);
+    if (m) {
+      const key = m[1].toLowerCase();
+      const val = m[2].trim();
+      if (key === 'author' && !author && val) author = val;
+      if (key === 'category' && !category && val) category = val;
+      i++;
+      continue;
+    }
+    break; // stop at first non-meta line
+  }
+  if (i > 0) {
+    content = lines.slice(i).join('\n');
+  }
+  return { author, category, content };
+}
+
 export async function uploadFolderAsBlog(uri?: vscode.Uri) {
   const cfg = vscode.workspace.getConfiguration();
   const uploadArticleUrl = cfg.get<string>('mkBlog.uploadArticleUrl');
   const uploadImageUrl = cfg.get<string>('mkBlog.uploadImageUrl');
-  const defaultAuthor = cfg.get<string>('mkBlog.author') || '';
-  const defaultCategory = cfg.get<string>('mkBlog.defaultCategory') || 'General';
   const token = cfg.get<string>('mkBlog.authToken') || '';
   if (!uploadArticleUrl && !uploadImageUrl) {
     throw new Error('未配置上传接口：mkBlog.uploadArticleUrl 或 mkBlog.uploadImageUrl');
@@ -42,13 +92,15 @@ export async function uploadFolderAsBlog(uri?: vscode.Uri) {
       const now = new Date();
       const updateAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-      const article = {
-        Author: defaultAuthor,
-        Title: title,
-        UpdateAt: updateAt,
-        Category: defaultCategory,
-        Content: t.mdContent,
+      // 解析 markdown 顶部的 author/category 元数据，如果不存在则不发送这些字段
+      const meta = extractMeta(t.mdContent);
+      const article: Record<string, any> = {
+        title,
+        update_at: updateAt,
+        content: meta.content,
       };
+      if (meta.author) article.author = meta.author;
+      if (meta.category) article.category = meta.category;
 
       if (uploadArticleUrl) {
         try {
