@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AddImage(c *gin.Context) {
+func UploadImage(c *gin.Context) {
 	img := &models.Image{}
 	if err := c.BindJSON(img); err != nil {
 		c.JSON(400, gin.H{"msg": "invalid request body"})

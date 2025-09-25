@@ -20,7 +20,7 @@ type Article struct {
 	Content  string `json:"content"`
 }
 
-func AddArticle(c *gin.Context) {
+func UploadArticle(c *gin.Context) {
 	var article Article
 	if err := c.BindJSON(&article); err != nil {
 		c.JSON(400, gin.H{"msg": "invalid request body"})

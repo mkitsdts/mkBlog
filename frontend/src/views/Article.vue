@@ -4,7 +4,7 @@
     <div class="meta">
       <span>作者：{{ article.author }}</span>
       <span class="dot"></span>
-      <span>更新时间：{{ article.updateAt }}</span>
+      <span>更新时间：{{ formatDate(article.updateAt || article.UpdateAt) }}</span>
     </div>
     <el-divider />
     <div class="content markdown-body" v-html="html"></div>
@@ -98,6 +98,18 @@ const md = new MarkdownIt({
     return '<pre class="hljs"><code>' + rawEscape(code) + '</code></pre>'
   }
 })
+
+function formatDate(dt?: string) {
+  if (!dt) return ''
+  try {
+    const d = new Date(dt)
+    if (isNaN(d.getTime())) return String(dt).replace('T',' ').substring(0,19)
+    const pad = (n: number) => String(n).padStart(2,'0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  } catch {
+    return String(dt).replace('T',' ').substring(0,19)
+  }
+}
 
 onMounted(async () => {
   const title = route.params.title

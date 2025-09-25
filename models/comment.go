@@ -9,5 +9,5 @@ type Comment struct {
 	CommentTo   int        `json:"comment_to_order" gorm:"type:int"`
 	Title       string     `json:"title" gorm:"index"` // 关联文章标题
 	Order       int        `json:"order" gorm:"default:0"`
-	CreatedAt   *time.Time `json:"created_at" gorm:"autoCreateTime;local"`
+	CreatedAt   *time.Time `json:"created_at" gorm:"autoCreateTime;"`
 }

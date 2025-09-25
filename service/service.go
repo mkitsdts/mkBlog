@@ -34,12 +34,12 @@ func NewBlogService() (*BlogService, error) {
 		a.POST("/comments", api.AddComment)
 
 		if config.Cfg.Auth.Enabled {
-			a.PUT("/article/:title", api.AddArticle, pkg.AuthRequired())
-			a.PUT("/image", api.AddImage, pkg.AuthRequired())
+			a.PUT("/article/:title", api.UploadArticle, pkg.AuthRequired())
+			a.PUT("/image", api.UploadImage, pkg.AuthRequired())
 			a.DELETE("/article/:title", api.DeleteArticle, pkg.AuthRequired())
 		} else {
-			a.PUT("/article/:title", api.AddArticle)
-			a.PUT("/image", api.AddImage)
+			a.PUT("/article/:title", api.UploadArticle)
+			a.PUT("/image", api.UploadImage)
 			a.DELETE("/article/:title", api.DeleteArticle)
 		}
 	}

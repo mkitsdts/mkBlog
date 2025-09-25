@@ -27,16 +27,18 @@ func InitDatabase() error {
 	var err error
 	dsn := config.Cfg.MySQL.User + ":" + config.Cfg.MySQL.Password +
 		"@tcp(" + config.Cfg.MySQL.Host + ":" + config.Cfg.MySQL.Port + ")/" +
-		config.Cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=Local"
+		config.Cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=UTC"
 	// 等待数据库启动
 	retryTimes := 100
 	for i := range retryTimes {
-		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+			NowFunc: func() time.Time { return time.Now().UTC() },
+		})
 		if err == nil {
 			slog.Info("connected to database", "dsn", dsn)
 			break
 		}
-		time.Sleep(time.Duration(i<<2) * time.Microsecond) // 等待100毫秒后重试
+		time.Sleep(time.Duration(i<<2) * time.Microsecond) // 指数退避
 		if i == retryTimes-1 {
 			return err
 		}

@@ -155,7 +155,20 @@ export default {
       router.push(`/article/${encodeURIComponent(title)}`)
     }
     const splitTags = (tags) => (tags || '').split(/[,;，\s]+/).filter(Boolean).slice(0,5);
-    const formatDate = (dt) => (dt || '').replace('T',' ').substring(0,19);
+    const formatDate = (dt) => {
+      if (!dt) return ''
+      try {
+        const d = new Date(dt) // 支持带Z/时区的UTC字符串
+        if (isNaN(d.getTime())) {
+          // 兜底：退回旧逻辑（仅替换T并截断）
+          return String(dt).replace('T',' ').substring(0,19)
+        }
+        const pad = (n) => String(n).padStart(2,'0')
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      } catch {
+        return String(dt).replace('T',' ').substring(0,19)
+      }
+    }
 
     const handlePageChange = (page) => {
       currentPage.value = page;
