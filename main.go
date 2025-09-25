@@ -1,12 +1,12 @@
 package main
 
 import (
-	"mkBlog/pkg"
+	"mkBlog/pkg/router"
 	"mkBlog/service"
 )
 
 func main() {
-	if err := pkg.InitRouter(); err != nil {
+	if err := router.InitRouter(); err != nil {
 		panic("failed to create router: " + err.Error())
 	}
 

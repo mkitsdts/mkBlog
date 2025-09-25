@@ -3,7 +3,7 @@ package api
 import (
 	"log/slog"
 	"mkBlog/models"
-	"mkBlog/pkg"
+	"mkBlog/pkg/database"
 	"sync"
 	"time"
 
@@ -20,7 +20,7 @@ func init() {
 		Title string
 		Count int
 	}
-	pkg.GetDatabase().Table("article_details AS a").
+	database.GetDatabase().Table("article_details AS a").
 		Select("a.title, COUNT(c.id) AS count").
 		Joins("LEFT JOIN comments c ON a.title = c.title").
 		Group("a.title").
@@ -54,7 +54,7 @@ func AddComment(c *gin.Context) {
 	comment_count[comment.Title]++
 	mtx.Unlock()
 	for i := range 3 {
-		if result := pkg.GetDatabase().Create(&models.Comment{
+		if result := database.GetDatabase().Create(&models.Comment{
 			Content:     comment.Content,
 			CommentUser: comment.CommentUser,
 			CommentTo:   comment.CommentTo,
@@ -80,7 +80,7 @@ func GetComments(c *gin.Context) {
 	}
 	var comments []models.Comment
 	for i := range 3 {
-		if result := pkg.GetDatabase().Where("title = ?", title).Order("`order` ASC").Find(&comments); result.Error == nil {
+		if result := database.GetDatabase().Where("title = ?", title).Order("`order` ASC").Find(&comments); result.Error == nil {
 			break
 		} else if i == 2 {
 			slog.Warn("failed to fetch comments", "title", title, "error", result.Error)

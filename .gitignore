@@ -4,3 +4,4 @@
 /mkBlog
 /static/server.key
 /static/server.crt
+/plugin/*.vsix

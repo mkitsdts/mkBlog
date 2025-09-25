@@ -4,7 +4,8 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"mkBlog/config"
-	"mkBlog/pkg"
+	"mkBlog/pkg/middleware"
+	"mkBlog/pkg/router"
 	"mkBlog/service/api"
 	"net/http"
 	"os"
@@ -21,7 +22,7 @@ func NewBlogService() (*BlogService, error) {
 		return nil, err
 	}
 
-	a := pkg.GetRouter().Group("/api")
+	a := router.GetRouter().Group("/api")
 	{
 		a.GET("/articles", api.GetArticleSummary)
 		a.GET("/article/:title", api.GetArticleDetail)
@@ -34,9 +35,9 @@ func NewBlogService() (*BlogService, error) {
 		a.POST("/comments", api.AddComment)
 
 		if config.Cfg.Auth.Enabled {
-			a.PUT("/article/:title", api.UploadArticle, pkg.AuthRequired())
-			a.PUT("/image", api.UploadImage, pkg.AuthRequired())
-			a.DELETE("/article/:title", api.DeleteArticle, pkg.AuthRequired())
+			a.PUT("/article/:title", api.UploadArticle, middleware.AuthRequired())
+			a.PUT("/image", api.UploadImage, middleware.AuthRequired())
+			a.DELETE("/article/:title", api.DeleteArticle, middleware.AuthRequired())
 		} else {
 			a.PUT("/article/:title", api.UploadArticle)
 			a.PUT("/image", api.UploadImage)
@@ -50,7 +51,7 @@ func (s *BlogService) Start() {
 	if config.Cfg.TLS.Enabled {
 		srv := &http.Server{
 			Addr:    ":8080",
-			Handler: pkg.GetRouter(),
+			Handler: router.GetRouter(),
 			TLSConfig: &tls.Config{
 				MinVersion:               tls.VersionTLS12,
 				PreferServerCipherSuites: true,
@@ -64,7 +65,7 @@ func (s *BlogService) Start() {
 			slog.Error("failed to start HTTPS server", "error", err)
 		}
 	} else {
-		if err := pkg.GetRouter().Run(":8080"); err != nil {
+		if err := router.GetRouter().Run(":8080"); err != nil {
 			slog.Error("failed to start HTTP server", "error", err)
 		}
 	}

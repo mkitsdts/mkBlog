@@ -2,7 +2,8 @@ package api
 
 import (
 	"mkBlog/models"
-	"mkBlog/pkg"
+	"mkBlog/pkg/bloom"
+	"mkBlog/pkg/database"
 	"mkBlog/utils"
 	"path"
 	"strconv"
@@ -50,19 +51,20 @@ func UploadArticle(c *gin.Context) {
 		Summary:  summary,
 	}
 
-	if result := pkg.GetDatabase().Create(&artd); result.Error != nil {
-		if result := pkg.GetDatabase().Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
+	if result := database.GetDatabase().Create(&artd); result.Error != nil {
+		if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
 			c.JSON(500, gin.H{"msg": "server error"})
 			return
 		}
 	}
 
-	if result := pkg.GetDatabase().Create(&arts); result.Error != nil {
-		if result := pkg.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error != nil {
+	if result := database.GetDatabase().Create(&arts); result.Error != nil {
+		if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error != nil {
 			c.JSON(500, gin.H{"msg": "server error"})
 			return
 		}
 	}
+	bloom.GetBloomFilter().Add([]byte(article.Title))
 	c.JSON(200, gin.H{"msg": "successfully added article"})
 }
 
@@ -75,7 +77,7 @@ func GetArticleDetail(c *gin.Context) {
 	}
 	var article models.ArticleDetail
 	safeTitle := path.Clean(title) // 防止路径遍历攻击
-	result := pkg.GetDatabase().Where("title = ?", safeTitle).First(&article)
+	result := database.GetDatabase().Where("title = ?", safeTitle).First(&article)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"msg": "article not found"})
@@ -113,7 +115,7 @@ func GetArticleSummary(c *gin.Context) {
 		filters = append(filters, single)
 	}
 
-	query := pkg.GetDatabase().Model(&models.ArticleSummary{})
+	query := database.GetDatabase().Model(&models.ArticleSummary{})
 	// 关键词搜索（title/summary 模糊匹配）
 	q := strings.TrimSpace(c.Query("q"))
 	if q != "" {
@@ -172,7 +174,7 @@ func SearchArticle(c *gin.Context) {
 
 	// 统计匹配总数（以详情表为准，Title 唯一）
 	var total int64
-	if err := pkg.GetDatabase().Raw(countSQL, q).Scan(&total).Error; err != nil {
+	if err := database.GetDatabase().Raw(countSQL, q).Scan(&total).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
@@ -180,7 +182,7 @@ func SearchArticle(c *gin.Context) {
 	usedLike := false
 	if total == 0 && utils.ContainsCJK(q) {
 		likeTerm := "%" + q + "%"
-		if err := pkg.GetDatabase().Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
+		if err := database.GetDatabase().Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
 			c.JSON(500, gin.H{"msg": "server error"})
 			return
 		}
@@ -200,11 +202,11 @@ func SearchArticle(c *gin.Context) {
 	var articles []models.ArticleSummary
 	if usedLike {
 		likeTerm := "%" + q + "%"
-		if err := pkg.GetDatabase().Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+		if err := database.GetDatabase().Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
 			c.JSON(500, gin.H{"msg": "server error"})
 			return
 		}
-	} else if err := pkg.GetDatabase().Raw(listSQL, q, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+	} else if err := database.GetDatabase().Raw(listSQL, q, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
@@ -215,4 +217,24 @@ func SearchArticle(c *gin.Context) {
 		"page":     page,
 		"maxPage":  (total + int64(pageSize) - 1) / int64(pageSize),
 	})
+}
+
+func DeleteArticle(c *gin.Context) {
+	title := strings.TrimSpace(c.Param("title"))
+	if title == "" {
+		c.JSON(400, gin.H{"msg": "invalid title"})
+		return
+	}
+
+	if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleDetail{}).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+
+	if err := database.GetDatabase().Where("title = ?", title).Delete(&models.ArticleSummary{}).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+	bloom.GetBloomFilter().Remove([]byte(title))
+	c.JSON(200, gin.H{"msg": "successfully deleted article"})
 }

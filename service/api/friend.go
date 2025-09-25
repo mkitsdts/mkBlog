@@ -3,7 +3,7 @@ package api
 import (
 	"log/slog"
 	"mkBlog/models"
-	"mkBlog/pkg"
+	"mkBlog/pkg/database"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +19,7 @@ func ApplyFriend(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "invalid friend data"})
 		return
 	}
-	result := pkg.GetDatabase().Create(&friend)
+	result := database.GetDatabase().Create(&friend)
 	if result.Error != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
@@ -29,7 +29,7 @@ func ApplyFriend(c *gin.Context) {
 
 func GetFriendList(c *gin.Context) {
 	var friends []models.Friend
-	result := pkg.GetDatabase().Find(&friends)
+	result := database.GetDatabase().Find(&friends)
 	if result.Error != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return

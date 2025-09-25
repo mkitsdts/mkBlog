@@ -1,8 +1,10 @@
-package pkg
+package router
 
 import (
 	"log/slog"
 	"mkBlog/config"
+	"mkBlog/pkg/cache"
+	"mkBlog/pkg/middleware"
 	"path/filepath"
 	"strings"
 
@@ -21,13 +23,13 @@ func InitRouter() error {
 	r.UseH2C = true
 	r.Use(gin.Logger(), gin.Recovery())
 	// 启用限流器
-	r.Use(RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+	r.Use(middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 
 	// 允许本地访问
 	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// 构建静态资源内存缓存（假设构建产物都放在 ./static）
-	cache, err := BuildAssetCache("./static")
+	cache, err := cache.BuildAssetCache("./static")
 	if err != nil {
 		slog.Warn("build asset cache failed,", "error:", err)
 	}
