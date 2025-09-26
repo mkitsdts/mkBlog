@@ -2,12 +2,14 @@ package service
 
 import (
 	"crypto/tls"
+	"log"
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
 	"mkBlog/service/api"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 )
 
@@ -48,6 +50,11 @@ func NewBlogService() (*BlogService, error) {
 }
 
 func (s *BlogService) Start() {
+	if config.Cfg.Server.Devmode {
+		go func() {
+			log.Println(http.ListenAndServe(":6060", nil))
+		}()
+	}
 	if config.Cfg.TLS.Enabled {
 		srv := &http.Server{
 			Addr:    ":8080",

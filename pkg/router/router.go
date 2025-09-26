@@ -5,6 +5,7 @@ import (
 	"mkBlog/config"
 	"mkBlog/pkg/cache"
 	"mkBlog/pkg/middleware"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -34,15 +35,52 @@ func InitRouter() error {
 		slog.Warn("build asset cache failed,", "error:", err)
 	}
 
-	// 1) 暴露图片目录为 /article（url: /article/{title}/{name} -> {ImageSavePath}/{title}/{name}）
+	// 1) 暴露图片目录为 /article（支持无后缀访问，自动追加 .webp）
 	imgRoot := config.Cfg.Server.ImageSavePath
 	if abs, err := filepath.Abs(imgRoot); err == nil {
 		imgRoot = abs
 	}
 	r.StaticFile("/config.yaml", "./config.yaml")
-	r.StaticFS("/article", gin.Dir(imgRoot, false))
+	// 自定义处理：优先尝试原路径；如最后一段无扩展名，则尝试追加 .webp
+	r.GET("/article/*rel", func(c *gin.Context) {
+		rel := strings.TrimPrefix(c.Param("rel"), "/")
+		// 规范化并防止目录穿越
+		clean := filepath.Clean(rel)
+		candidate := filepath.Join(imgRoot, clean)
+		// 确保在根目录之下
+		if !strings.HasPrefix(candidate+string(os.PathSeparator), imgRoot+string(os.PathSeparator)) && candidate != imgRoot {
+			c.JSON(400, gin.H{"msg": "invalid path"})
+			return
+		}
 
-	// 可选：为图片添加缓存头
+		// 如果带扩展名，直接尝试该文件
+		base := filepath.Base(clean)
+		if dot := strings.LastIndexByte(base, '.'); dot > 0 {
+			if fileExists(candidate) {
+				c.Header("Cache-Control", "public, max-age=31536000, immutable")
+				c.File(candidate)
+				return
+			}
+			c.JSON(404, gin.H{"msg": "image not found"})
+			return
+		}
+
+		// 无扩展名：尝试追加 .webp
+		webpPath := candidate + ".webp"
+		if fileExists(webpPath) {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.File(webpPath)
+			return
+		}
+		// 也尝试原路径（例如目录索引被禁用，将返回 404）
+		if fileExists(candidate) {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.File(candidate)
+			return
+		}
+		c.JSON(404, gin.H{"msg": "image not found"})
+	})
+
 	r.Use(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/article/") {
 			c.Header("Cache-Control", "public, max-age=31536000, immutable")
@@ -66,7 +104,6 @@ func InitRouter() error {
 	} else {
 		r.Static("/assets", "./static/assets")
 		r.StaticFile("/", "./static/index.html")
-		// 去掉重复的 /images 映射，统一用 /article
 		r.NoRoute(func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 				c.JSON(404, gin.H{"msg": "not found"})
@@ -77,4 +114,13 @@ func InitRouter() error {
 	}
 
 	return nil
+}
+
+// fileExists checks if a regular file exists at the given path.
+func fileExists(p string) bool {
+	fi, err := os.Stat(p)
+	if err != nil {
+		return false
+	}
+	return !fi.IsDir()
 }

@@ -1,5 +1,5 @@
 #
-FROM node:22.19.0-alpine AS frontend
+FROM node:lts-alpine3.22 AS frontend
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json* ./
@@ -10,8 +10,12 @@ COPY frontend/ ./
 RUN npm run build
 
 # 
-FROM golang:1.25.1 AS backend
+FROM golang:tip-alpine AS backend
 WORKDIR /app
+
+RUN apk add git --repository http://mirrors.aliyun.com/alpine/v3.14/main/
+RUN apk update
+RUN apk add gcc g++ git
 
 COPY go.mod go.sum ./
 RUN go env -w GOPROXY=https://goproxy.io,direct
@@ -21,10 +25,10 @@ COPY . .
 
 COPY --from=frontend /app/frontend/dist ./static
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main .
+RUN CGO_ENABLED=1 GOOS=linux go build -o /app/main .
 
 #
-FROM alpine:latest
+FROM alpine:3.22
 WORKDIR /app
 
 COPY --from=backend /app/main .
@@ -33,6 +37,6 @@ COPY --from=backend /app/static ./static
 # 复制配置文件供前端运行时获取
 COPY config.yaml ./config.yaml
 
-EXPOSE 8080
+EXPOSE 8080 6060
 
 CMD ["./main"]
