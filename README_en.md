@@ -67,6 +67,10 @@ docker-compose up -d
 
 - Upload articles: use CLI tool `mkblog push` (write Markdown with front matter)
 
+- Use vscode plugin to UPLOAD
+
+- When you add image to article, you can ignore suffix, because backend will translate all pic to webp.
+
 ## Access
 
 Unified frontend & backend:
