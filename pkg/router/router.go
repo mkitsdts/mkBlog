@@ -53,6 +53,18 @@ func InitRouter() error {
 			return
 		}
 
+		// 如果是单段路径 /article/:title（没有后续文件名），这是前端 SPA 的文章详情路由，直接返回 index.html
+		if !strings.Contains(rel, "/") || strings.HasSuffix(clean, "/") {
+			if cache != nil {
+				// 复用缓存处理器返回 SPA 入口
+				c.Request.URL.Path = "/"
+				cache.Handler()(c)
+			} else {
+				c.File("./static/index.html")
+			}
+			return
+		}
+
 		// 如果带扩展名，直接尝试该文件
 		base := filepath.Base(clean)
 		if dot := strings.LastIndexByte(base, '.'); dot > 0 {
