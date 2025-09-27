@@ -45,6 +45,8 @@ func UploadArticle(c *gin.Context) {
 	} else {
 		summary = article.Content[:100]
 	}
+	// 生成摘要时去除 Markdown 语法
+	summary = utils.StripMarkdown(summary)
 
 	arts := models.ArticleSummary{
 		Title:    article.Title,
