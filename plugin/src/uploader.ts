@@ -88,46 +88,49 @@ export async function uploadFolderAsBlog(uri?: vscode.Uri) {
   for (const t of tasks) {
     const title = path.basename(t.mdPath, '.md');
     // 分离上传：文章 PUT /article/{title}，图片逐张 PUT /image
-      const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-      const now = new Date();
-      const updateAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+    const now = new Date();
+    const updateAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-      // 解析 markdown 顶部的 author/category 元数据，如果不存在则不发送这些字段
-      const meta = extractMeta(t.mdContent);
-      const article: Record<string, any> = {
-        title,
-        update_at: updateAt,
-        content: meta.content,
-      };
-      if (meta.author) article.author = meta.author;
-      if (meta.category) article.category = meta.category;
+    // 解析 markdown 顶部的 author/category 元数据，如果不存在则不发送这些字段
+    const meta = extractMeta(t.mdContent);
+    const article: Record<string, any> = {
+      title,
+      update_at: updateAt,
+      content: meta.content,
+    };
+    if (meta.author) article.author = meta.author;
+    else article.author = cfg.get<string>('mkBlog.defaultAuthor');
 
-      if (uploadArticleUrl) {
-        try {
-          const articleUrl = uploadArticleUrl.replace('{title}', encodeURIComponent(title));
-          const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
-          const res = await fetch(articleUrl, { method: 'PUT', body: JSON.stringify(article), headers: jsonHeaders });
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            vscode.window.showWarningMessage(`上传文章失败(JSON): ${path.basename(t.mdPath)} -> HTTP ${res.status} ${res.statusText} ${text}，将继续上传图片。`);
-          }
-        } catch (err: any) {
-          vscode.window.showWarningMessage(`上传文章异常: ${path.basename(t.mdPath)} -> ${err?.message || err}，将继续上传图片。`);
+    if (meta.category) article.category = meta.category;
+    else article.category = cfg.get<string>('mkBlog.defaultCategory');
+
+    if (uploadArticleUrl) {
+      try {
+        const articleUrl = uploadArticleUrl.replace('{title}', encodeURIComponent(title));
+        const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
+        const res = await fetch(articleUrl, { method: 'PUT', body: JSON.stringify(article), headers: jsonHeaders });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          vscode.window.showWarningMessage(`上传文章失败(JSON): ${path.basename(t.mdPath)} -> HTTP ${res.status} ${res.statusText} ${text}，将继续上传图片。`);
+        }
+      } catch (err: any) {
+        vscode.window.showWarningMessage(`上传文章异常: ${path.basename(t.mdPath)} -> ${err?.message || err}，将继续上传图片。`);
+      }
+    }
+
+    if (uploadImageUrl) {
+      for (const img of t.images) {
+        const base64 = Buffer.from(img.buffer).toString('base64');
+        const payload = { title, data: base64, name: img.name };
+        const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
+        const res = await fetch(uploadImageUrl, { method: 'PUT', body: JSON.stringify(payload), headers: jsonHeaders });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`上传图片失败(JSON): ${img.name} -> HTTP ${res.status} ${res.statusText} ${text}`);
         }
       }
-
-      if (uploadImageUrl) {
-        for (const img of t.images) {
-          const base64 = Buffer.from(img.buffer).toString('base64');
-          const payload = { title, data: base64, name: img.name };
-          const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
-          const res = await fetch(uploadImageUrl, { method: 'PUT', body: JSON.stringify(payload), headers: jsonHeaders });
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            throw new Error(`上传图片失败(JSON): ${img.name} -> HTTP ${res.status} ${res.statusText} ${text}`);
-          }
-        }
-      }
+    }
   }
   vscode.window.showInformationMessage(`上传完成，共 ${tasks.length} 篇。`);
 }
