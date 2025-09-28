@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target,
           changeOrigin: true,
-          secure: false, // 允许自签名证书
+          secure: false, // allow self-signed certificates
         },
         '/config.yaml': {
           target,

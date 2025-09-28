@@ -47,7 +47,9 @@ func InitDatabase() error {
 	err = db.AutoMigrate(&models.ArticleSummary{},
 		&models.ArticleDetail{},
 		&models.Friend{},
-		&models.Comment{})
+		&models.Comment{},
+		&models.BlackIP{},
+	)
 	if err != nil {
 		return err
 	}

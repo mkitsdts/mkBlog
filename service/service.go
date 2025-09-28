@@ -40,10 +40,12 @@ func NewBlogService() (*BlogService, error) {
 			a.PUT("/article/:title", api.UploadArticle, middleware.AuthRequired())
 			a.PUT("/image", api.UploadImage, middleware.AuthRequired())
 			a.DELETE("/article/:title", api.DeleteArticle, middleware.AuthRequired())
+			a.POST("/blockip", api.BlackIP, middleware.AuthRequired())
 		} else {
 			a.PUT("/article/:title", api.UploadArticle)
 			a.PUT("/image", api.UploadImage)
 			a.DELETE("/article/:title", api.DeleteArticle)
+			a.POST("/blockip", api.BlackIP)
 		}
 	}
 	return &service, nil
