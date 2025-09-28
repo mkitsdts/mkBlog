@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"mkBlog/models"
+	"mkBlog/pkg/database"
 	"net/http"
 	"sync"
 	"time"
@@ -35,6 +37,11 @@ func RateLimit(maxRequests int, windowSeconds int) gin.HandlerFunc {
 			})
 		}()
 		if count >= maxRequests {
+			go database.GetDatabase().Create(&models.SuspectedIP{
+				IP:     clientIP,
+				Reason: "Rate limit exceeded",
+			})
+			// 超过限流阈值，拒绝请求
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"msg": "too many requests"})
 			return
 		}

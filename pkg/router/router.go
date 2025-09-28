@@ -23,10 +23,10 @@ func InitRouter() error {
 	gin.SetMode(gin.ReleaseMode)
 	r.UseH2C = true
 	r.Use(gin.Logger(), gin.Recovery())
-	// 启用限流器
-	r.Use(middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 	// 启用黑名单
 	r.Use(middleware.Blacklist())
+	// 启用限流器
+	r.Use(middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 	// 允许本地访问
 	r.SetTrustedProxies([]string{"127.0.0.1"})
 

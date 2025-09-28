@@ -49,6 +49,7 @@ func InitDatabase() error {
 		&models.Friend{},
 		&models.Comment{},
 		&models.BlackIP{},
+		&models.SuspectedIP{},
 	)
 	if err != nil {
 		return err

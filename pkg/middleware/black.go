@@ -11,10 +11,14 @@ var blacklistedIPs = make(map[string]struct{})
 
 func init() {
 	// 从数据库加载
-	var blackips []models.BlackIP
+	count := make(map[string]int)
+	var blackips []models.SuspectedIP
 	if err := database.GetDatabase().Find(&blackips).Error; err == nil {
 		for _, b := range blackips {
-			blacklistedIPs[b.IP] = struct{}{}
+			count[b.IP]++
+			if count[b.IP] > 5 { // 超过5次记录则加入黑名单
+				blacklistedIPs[b.IP] = struct{}{}
+			}
 		}
 	}
 }
