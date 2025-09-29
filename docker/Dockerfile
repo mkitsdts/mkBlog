@@ -13,7 +13,7 @@ RUN npm run build
 FROM golang:tip-alpine AS backend
 WORKDIR /app
 
-RUN apk add git --repository http://mirrors.aliyun.com/alpine/v3.14/main/
+RUN sed -i 's#https\?://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#g' /etc/apk/repositories
 RUN apk update
 RUN apk add gcc g++ git
 
