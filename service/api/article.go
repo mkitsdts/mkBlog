@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"mkBlog/models"
 	"mkBlog/pkg/bloom"
 	"mkBlog/pkg/database"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Article struct {
@@ -54,32 +56,24 @@ func UploadArticle(c *gin.Context) {
 		Summary:  summary,
 	}
 
-	for i := range 3 {
-		if result := database.GetDatabase().Create(&artd); result.Error != nil {
-			if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&artd); result.Error != nil {
-				continue
-			} else if result := database.GetDatabase().Create(&arts); result.Error != nil {
-				if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error == nil {
-					break
-				}
-			} else {
-				break
-			}
-		} else {
-			if result := database.GetDatabase().Create(&arts); result.Error != nil {
-				if result := database.GetDatabase().Where("title = ?", article.Title).Updates(&arts); result.Error == nil {
-					break
-				}
-			} else {
-				break
-			}
-		}
-		if i == 2 {
-			c.JSON(500, gin.H{"msg": "server error"})
-			return
-		}
-		time.Sleep(10 << i * time.Millisecond)
+	if err := database.GetDatabase().Clauses(
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "title"}},                        // 冲突字段
+			DoUpdates: clause.AssignmentColumns([]string{"content", "author"}), // 更新的字段
+		},
+	).Create(&artd).Error; err != nil {
+		slog.Error("insert article detail failed ", "error: ", err)
 	}
+
+	if err := database.GetDatabase().Clauses(
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "title"}},                          // 冲突字段
+			DoUpdates: clause.AssignmentColumns([]string{"summary", "category"}), // 更新的字段
+		},
+	).Create(&arts).Error; err != nil {
+		slog.Error("insert article summary failed ", "error: ", err)
+	}
+
 	bloom.GetBloomFilter().Add([]byte(article.Title))
 	c.JSON(200, gin.H{"msg": "successfully added article"})
 }
