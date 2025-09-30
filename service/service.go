@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"log/slog"
 	"mkBlog/config"
@@ -59,14 +60,10 @@ func (s *BlogService) Start() {
 	}
 	if config.Cfg.TLS.Enabled {
 		srv := &http.Server{
-			Addr:    ":8080",
+			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
 			Handler: router.GetRouter(),
 			TLSConfig: &tls.Config{
-				MinVersion:               tls.VersionTLS12,
-				PreferServerCipherSuites: true,
-				CurvePreferences: []tls.CurveID{
-					tls.X25519, tls.CurveP256,
-				},
+				MinVersion: tls.VersionTLS12,
 			},
 		}
 		// Start HTTPS server
@@ -74,7 +71,7 @@ func (s *BlogService) Start() {
 			slog.Error("failed to start HTTPS server", "error", err)
 		}
 	} else {
-		if err := router.GetRouter().Run(":8080"); err != nil {
+		if err := router.GetRouter().Run(":" + fmt.Sprint(config.Cfg.Server.Port)); err != nil {
 			slog.Error("failed to start HTTP server", "error", err)
 		}
 	}

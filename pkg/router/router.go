@@ -19,8 +19,8 @@ func GetRouter() *gin.Engine {
 }
 
 func InitRouter() error {
-	r = gin.New()
 	gin.SetMode(gin.ReleaseMode)
+	r = gin.New()
 	r.UseH2C = true
 	r.Use(gin.Logger(), gin.Recovery())
 	// 启用黑名单
