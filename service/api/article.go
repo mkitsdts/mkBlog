@@ -106,6 +106,15 @@ func GetArticleDetail(c *gin.Context) {
 	c.JSON(200, article)
 }
 
+func GetAllArticleSummaries(c *gin.Context) {
+	var articles []models.ArticleSummary
+	if err := database.GetDatabase().Model(&models.ArticleSummary{}).Order("update_at DESC").Find(&articles).Error; err != nil {
+		c.JSON(500, gin.H{"msg": "server error"})
+		return
+	}
+	c.JSON(200, gin.H{"articles": articles})
+}
+
 func GetArticleSummary(c *gin.Context) {
 	var articles []models.ArticleSummary
 	page, err := strconv.Atoi(c.Query("page"))
