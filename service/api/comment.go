@@ -53,6 +53,10 @@ func AddComment(c *gin.Context) {
 	mtx.Lock()
 	comment_count[comment.Title]++
 	mtx.Unlock()
+	if !isLegalComment(comment.Content) {
+		c.JSON(400, gin.H{"msg": "illegal comment"})
+		return
+	}
 	for i := range 3 {
 		if result := database.GetDatabase().Create(&models.Comment{
 			Content:     comment.Content,
@@ -89,4 +93,13 @@ func GetComments(c *gin.Context) {
 		}
 	}
 	c.JSON(200, gin.H{"comments": comments})
+}
+
+func isLegalComment(content string) bool {
+	// 判断长度是否合法
+	if len(content) == 0 || len(content) > 500 {
+		return false
+	}
+	// 后续添加更多验证规则
+	return true
 }
