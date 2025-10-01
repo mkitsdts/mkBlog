@@ -104,6 +104,7 @@ export default {
     const currentPage = ref(1);
     const pageSize = ref(5);
     const total = ref(0);
+    const aboutContent = ref('');
 
   const fetchArticles = async (page) => {
       try {
@@ -188,7 +189,8 @@ export default {
     onMounted(async () => {
       try {
         const conf = await loadConfig();
-        signature.value = conf.signature || '签名未配置';
+        signature.value = conf.signature || '鼠鼠很懒，什么都没有留下';
+        aboutContent.value = conf.about || '鼠鼠很懒，什么都没有留下';
         try {
           avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
         } catch { avatarUrl.value = ''; }
@@ -216,6 +218,7 @@ export default {
   formatDate,
   doSearch,
   clearSearch,
+  aboutContent,
     };
   },
 };
@@ -261,4 +264,20 @@ export default {
 .tag-item { margin-right:4px; }
 .title-link { text-decoration:none; }
 .blog-card:active { transform:translateY(-1px) scale(.995); }
+.about-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+.about-section h2 {
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+  color: #333;
+}
+.about-section p {
+  font-size: 1rem;
+  color: #555;
+  line-height: 1.6;
+}
 </style>
