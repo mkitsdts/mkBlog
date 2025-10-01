@@ -1,7 +1,11 @@
 <template>
   <div class="home">
-    <el-container>
-      <el-aside width="220px">
+    <el-container :class="['home-container', { 'is-mobile': isMobile }]">
+      <el-aside
+        v-if="!isMobile"
+        width="220px"
+        class="sidebar"
+      >
         <div class="user-profile">
           <el-avatar :size="100" :src="avatarUrl"></el-avatar>
           <h3>{{ signature }}</h3>
@@ -10,19 +14,35 @@
           <h4 class="cat-title">分类</h4>
           <el-tag
             :type="selectedCategories.length === 0 ? 'success' : 'info'"
-            size="small" class="cat-item" effect="light"
-            @click="clearCategories">全部</el-tag>
+            size="small"
+            class="cat-item"
+            effect="light"
+            @click="clearCategories"
+          >全部</el-tag>
           <el-tag
-            v-for="c in categories" :key="c"
+            v-for="c in categories"
+            :key="c"
             :type="isActive(c) ? 'success' : 'info'"
-            size="small" class="cat-item" @click="toggleCategory(c)"
-            effect="light">
+            size="small"
+            class="cat-item"
+            effect="light"
+            @click="toggleCategory(c)"
+          >
             {{ c || '未分类' }}
           </el-tag>
         </div>
       </el-aside>
-      <el-main>
+      <el-main :class="{ 'mobile-main': isMobile }">
         <div class="toolbar">
+          <el-button
+            v-if="isMobile"
+            class="sidebar-toggle"
+            type="primary"
+            text
+            @click="drawerVisible = true"
+          >
+            <el-icon><Menu /></el-icon>
+          </el-button>
           <el-input
             v-model="keyword"
             placeholder="搜索标题或摘要..."
@@ -74,48 +94,84 @@
         </el-pagination>
       </el-main>
     </el-container>
+    <el-drawer
+      v-if="isMobile"
+      v-model="drawerVisible"
+      :with-header="false"
+      direction="ltr"
+      size="260px"
+      class="sidebar-drawer"
+    >
+      <div class="sidebar">
+        <div class="user-profile">
+          <el-avatar :size="100" :src="avatarUrl"></el-avatar>
+          <h3>{{ signature }}</h3>
+        </div>
+        <div class="category-panel">
+          <h4 class="cat-title">分类</h4>
+          <el-tag
+            :type="selectedCategories.length === 0 ? 'success' : 'info'"
+            size="small"
+            class="cat-item"
+            effect="light"
+            @click="clearCategories"
+          >全部</el-tag>
+          <el-tag
+            v-for="c in categories"
+            :key="c"
+            :type="isActive(c) ? 'success' : 'info'"
+            size="small"
+            class="cat-item"
+            effect="light"
+            @click="toggleCategory(c)"
+          >
+            {{ c || '未分类' }}
+          </el-tag>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 import { loadConfig } from '@/config';
+import { Menu } from '@element-plus/icons-vue';
 
 export default {
   name: 'Home',
   setup() {
-    const getAvatarUrl = () => {
-      try {
-        return new URL(`../assets/${config.avatarPath}`, import.meta.url).href;
-      } catch (e) {
-        console.error(e);
-        return 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
-      }
-    };
-
-  const avatarUrl = ref('');
-  const signature = ref('');
-  const articles = ref([]);
-  const keyword = ref('');
-  const categories = ref([]);
-  const selectedCategories = ref([]);
+    const avatarUrl = ref('');
+    const signature = ref('');
+    const articles = ref([]);
+    const keyword = ref('');
+    const categories = ref([]);
+    const selectedCategories = ref([]);
     const currentPage = ref(1);
     const pageSize = ref(5);
     const total = ref(0);
-    const aboutContent = ref('');
+    const isMobile = ref(false);
+    const drawerVisible = ref(false);
 
-  const fetchArticles = async (page) => {
+    const updateIsMobile = () => {
+      isMobile.value = window.innerWidth <= 768;
+      if (!isMobile.value) {
+        drawerVisible.value = false;
+      }
+    };
+
+    const fetchArticles = async (page) => {
       try {
-    const kw = keyword.value.trim();
-    let response;
-    if (kw) {
-      // 全文搜索接口不支持分类过滤，清空分类以避免误导
-      response = await api.searchArticles(kw, page, pageSize.value);
-    } else {
-      response = await api.getArticles(page, pageSize.value, selectedCategories.value);
-    }
+        const kw = keyword.value.trim();
+        let response;
+        if (kw) {
+          // 全文搜索接口不支持分类过滤，清空分类以避免误导
+          response = await api.searchArticles(kw, page, pageSize.value);
+        } else {
+          response = await api.getArticles(page, pageSize.value, selectedCategories.value);
+        }
         articles.value = response.data.articles;
         total.value = response.data.total;
       } catch (error) {
@@ -143,11 +199,17 @@ export default {
       }
       currentPage.value = 1;
       fetchArticles(currentPage.value);
+      if (isMobile.value) {
+        drawerVisible.value = false;
+      }
     };
-    const clearCategories = () => { 
+    const clearCategories = () => {
       if (keyword.value.trim()) keyword.value = '';
-      selectedCategories.value = []; 
-      fetchArticles(1); 
+      selectedCategories.value = [];
+      fetchArticles(1);
+      if (isMobile.value) {
+        drawerVisible.value = false;
+      }
     };
     const isActive = (c) => selectedCategories.value.includes(c);
 
@@ -187,16 +249,21 @@ export default {
     };
 
     onMounted(async () => {
+      updateIsMobile();
+      window.addEventListener('resize', updateIsMobile);
       try {
         const conf = await loadConfig();
         signature.value = conf.signature || '鼠鼠很懒，什么都没有留下';
-        aboutContent.value = conf.about || '鼠鼠很懒，什么都没有留下';
         try {
           avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
         } catch { avatarUrl.value = ''; }
       } catch (e) { console.error('load config failed', e); }
       fetchCategories();
       fetchArticles(currentPage.value);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', updateIsMobile);
     });
 
     return {
@@ -207,18 +274,20 @@ export default {
       currentPage,
       pageSize,
       total,
-  handlePageChange,
-  categories,
-  selectedCategories,
-  toggleCategory,
-  clearCategories,
-  isActive,
-  goDetail,
-  splitTags,
-  formatDate,
-  doSearch,
-  clearSearch,
-  aboutContent,
+      handlePageChange,
+      categories,
+      selectedCategories,
+      toggleCategory,
+      clearCategories,
+      isActive,
+      goDetail,
+      splitTags,
+      formatDate,
+      doSearch,
+      clearSearch,
+      isMobile,
+      drawerVisible,
+      Menu,
     };
   },
 };
@@ -228,14 +297,52 @@ export default {
 .home {
   padding: 20px;
 }
+.home-container {
+  min-height: calc(100vh - 80px);
+}
+.home-container.is-mobile {
+  flex-direction: column;
+}
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 .user-profile {
   text-align: center;
   background-color: rgba(255, 255, 255, 0.7);
   padding: 20px;
   border-radius: 10px;
 }
-.toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
-.search-input { max-width: 360px; }
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.sidebar-toggle .el-icon {
+  font-size: 20px;
+}
+.search-input {
+  max-width: 360px;
+}
+.mobile-main {
+  width: 100%;
+}
+.sidebar-drawer {
+  padding: 0 12px 24px;
+}
+.sidebar-drawer .sidebar {
+  gap: 16px;
+}
 .category-panel { margin-top:20px; background:rgba(255,255,255,.7); padding:12px 14px; border-radius:10px; }
 .cat-title { margin:0 0 8px; font-size:14px; color:#333; }
 .cat-item { margin: 4px 6px 4px 0; cursor:pointer; user-select:none; }
@@ -279,5 +386,27 @@ export default {
   font-size: 1rem;
   color: #555;
   line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .home {
+    padding: 12px;
+  }
+  .toolbar {
+    justify-content: space-between;
+  }
+  .search-input {
+    max-width: none;
+    flex: 1;
+  }
+  .blog-card {
+    margin-bottom: 16px;
+  }
+  .user-profile {
+    padding: 16px;
+  }
+  .category-panel {
+    margin-top: 12px;
+  }
 }
 </style>
