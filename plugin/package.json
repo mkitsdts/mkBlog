@@ -72,35 +72,25 @@
             "type": "object",
             "title": "mkBlog Settings",
             "properties": {
-                "mkBlog.uploadArticleUrl": {
+                "mkBlog.baseUrl": {
                     "type": "string",
-                    "default": "http://localhost:3000/article/{title}",
-                    "description": "Article upload URL(PUT Article JSON)。Support {title} or {id} as placeholder"
+                    "default": "http://localhost:8080",
+                    "description": "后端服务基础地址，例如 http://localhost:8080"
                 },
-                "mkBlog.uploadImageUrl": {
+                "mkBlog.defaultAuthor": {
                     "type": "string",
-                    "default": "http://localhost:3000/image",
-                    "description": "Image upload URL(PUT Image JSON,includes title/data/name)"
+                    "default": "",
+                    "description": "文章默认作者(可在 Markdown 元数据中覆盖)"
                 },
                 "mkBlog.author": {
                     "type": "string",
                     "default": "",
-                    "description": "Default author(Article.Author)"
+                    "description": "(兼容旧版本) 文章默认作者，建议改用 mkBlog.defaultAuthor"
                 },
                 "mkBlog.defaultCategory": {
                     "type": "string",
                     "default": "General",
-                    "description": "Default category(Article.Category)"
-                },
-                "mkBlog.listUrl": {
-                    "type": "string",
-                    "default": "http://localhost:3000/api/articles",
-                    "description": "Article list API URL(GET)"
-                },
-                "mkBlog.deleteUrl": {
-                    "type": "string",
-                    "default": "http://localhost:3000/article/{title}",
-                    "description": "Delete article API URL, support placeholder {title} (replace with filename/title) or {id}?"
+                    "description": "文章默认分类(可在 Markdown 元数据中覆盖)"
                 },
                 "mkBlog.authToken": {
                     "type": "string",

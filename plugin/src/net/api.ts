@@ -5,7 +5,14 @@ export interface RawArticle {
   title: string;
 }
 
-export async function fetchArticles(listUrl: string, token?: string): Promise<RawArticle[]> {
+function joinUrl(baseUrl: string, path: string): string {
+  const base = (baseUrl || '').replace(/\/+$/, '');
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${suffix}`;
+}
+
+export async function fetchArticles(baseUrl: string, token?: string): Promise<RawArticle[]> {
+  const listUrl = joinUrl(baseUrl, '/api/allarticles');
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(listUrl, { method: 'GET', headers });
@@ -42,7 +49,17 @@ export async function fetchArticles(listUrl: string, token?: string): Promise<Ra
   }));
 }
 
-export async function deleteArticleById(url: string, token?: string): Promise<void> {
+export function buildArticleEndpoint(baseUrl: string, title: string): string {
+  const encoded = encodeURIComponent(title);
+  return joinUrl(baseUrl, `/api/article/${encoded}`);
+}
+
+export function buildImageEndpoint(baseUrl: string): string {
+  return joinUrl(baseUrl, '/api/image');
+}
+
+export async function deleteArticleByTitle(baseUrl: string, title: string, token?: string): Promise<void> {
+  const url = buildArticleEndpoint(baseUrl, title);
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(url, { method: 'DELETE', headers });

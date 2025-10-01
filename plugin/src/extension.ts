@@ -1,19 +1,19 @@
 import * as vscode from 'vscode';
 import { ArticleProvider, ArticleTreeItem } from './tree/ArticleProvider';
-import { fetchArticles, deleteArticleById } from './net/api';
+import { fetchArticles, deleteArticleByTitle } from './net/api';
 import { uploadFolderAsBlog } from './uploader';
 
 export async function activate(context: vscode.ExtensionContext) {
   const articleProvider = new ArticleProvider(async () => {
     const cfg = vscode.workspace.getConfiguration();
-    const listUrl = cfg.get<string>('mkBlog.listUrl');
+    const baseUrl = (cfg.get<string>('mkBlog.baseUrl') || '').trim();
     const token = cfg.get<string>('mkBlog.authToken') || '';
-    if (!listUrl) {
-      vscode.window.showWarningMessage('mkBlog: 未配置 listUrl');
+    if (!baseUrl) {
+      vscode.window.showWarningMessage('mkBlog: 未配置 baseUrl');
       return [];
     }
     try {
-      const items = await fetchArticles(listUrl, token);
+      const items = await fetchArticles(baseUrl, token);
       return items;
     } catch (err: any) {
       vscode.window.showErrorMessage(`获取文章列表失败: ${err?.message || err}`);
@@ -46,18 +46,14 @@ export async function activate(context: vscode.ExtensionContext) {
       );
       if (confirm !== '删除') return;
       const cfg = vscode.workspace.getConfiguration();
-      const template = cfg.get<string>('mkBlog.deleteUrl');
+      const baseUrl = (cfg.get<string>('mkBlog.baseUrl') || '').trim();
       const token = cfg.get<string>('mkBlog.authToken') || '';
-      if (!template) {
-        vscode.window.showWarningMessage('mkBlog: 未配置 deleteUrl');
+      if (!baseUrl) {
+        vscode.window.showWarningMessage('mkBlog: 未配置 baseUrl');
         return;
       }
-  // 同时支持 {id} 与 {title} 两种占位符
-  let url = template;
-  url = url.replace('{id}', encodeURIComponent(String(picked.id)));
-  url = url.replace('{title}', encodeURIComponent(String(picked.title)));
       try {
-        await deleteArticleById(url, token);
+        await deleteArticleByTitle(baseUrl, String(picked.title), token);
         vscode.window.showInformationMessage('删除成功');
         await articleProvider.refresh();
       } catch (err: any) {

@@ -8,10 +8,10 @@
 - 右键或按钮删除文章。
 
 ## 扩展设置
-- `mkBlog.uploadUrl`: 上传接口 URL（PUT, multipart/form-data）
-- `mkBlog.listUrl`: 文章列表接口 URL（GET 返回数组或 `{ data: [] }`）
-- `mkBlog.deleteUrl`: 删除接口 URL，使用 `{id}` 占位符
-- `mkBlog.authToken`: 可选 Bearer Token
+- `mkBlog.baseUrl`: 后端服务基础地址（例如 `http://localhost:8080`）。各接口会自动拼接 `/api/articles`、`/api/article/:title`、`/api/image` 等路径。
+- `mkBlog.defaultAuthor`: 若 Markdown 中未声明作者时使用的默认作者。
+- `mkBlog.defaultCategory`: 若 Markdown 中未声明分类时使用的默认分类。
+- `mkBlog.authToken`: 可选 Bearer Token，会通过 `Authorization: Bearer <token>` 头发送。
 
 ## 命令
 - `mkBlog: 上传文件夹为博客`

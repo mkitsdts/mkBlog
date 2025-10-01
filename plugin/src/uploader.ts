@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { findMarkdownFilesWithImageFolders } from './utils/fs';
+import { buildArticleEndpoint, buildImageEndpoint } from './net/api';
 
 function extractMeta(md: string): { author?: string; category?: string; content: string } {
   let author: string | undefined;
@@ -56,11 +57,10 @@ function extractMeta(md: string): { author?: string; category?: string; content:
 
 export async function uploadFolderAsBlog(uri?: vscode.Uri) {
   const cfg = vscode.workspace.getConfiguration();
-  const uploadArticleUrl = cfg.get<string>('mkBlog.uploadArticleUrl');
-  const uploadImageUrl = cfg.get<string>('mkBlog.uploadImageUrl');
+  const baseUrl = (cfg.get<string>('mkBlog.baseUrl') || '').trim();
   const token = cfg.get<string>('mkBlog.authToken') || '';
-  if (!uploadArticleUrl && !uploadImageUrl) {
-    throw new Error('未配置上传接口：mkBlog.uploadArticleUrl 或 mkBlog.uploadImageUrl');
+  if (!baseUrl) {
+    throw new Error('未配置 mkBlog.baseUrl');
   }
 
   // 优先使用传入目录；否则使用已打开的工作区根目录；若都没有，再让用户选择
@@ -85,6 +85,8 @@ export async function uploadFolderAsBlog(uri?: vscode.Uri) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
+  const imageEndpoint = buildImageEndpoint(baseUrl);
+
   for (const t of tasks) {
     const title = path.basename(t.mdPath, '.md');
     // 分离上传：文章 PUT /article/{title}，图片逐张 PUT /image
@@ -100,31 +102,29 @@ export async function uploadFolderAsBlog(uri?: vscode.Uri) {
       content: meta.content,
     };
     if (meta.author) article.author = meta.author;
-    else article.author = cfg.get<string>('mkBlog.defaultAuthor');
+    else article.author = cfg.get<string>('mkBlog.defaultAuthor') ?? cfg.get<string>('mkBlog.author');
 
     if (meta.category) article.category = meta.category;
     else article.category = cfg.get<string>('mkBlog.defaultCategory');
 
-    if (uploadArticleUrl) {
-      try {
-        const articleUrl = uploadArticleUrl.replace('{title}', encodeURIComponent(title));
+    try {
+      const articleUrl = buildArticleEndpoint(baseUrl, title);
         const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
         const res = await fetch(articleUrl, { method: 'PUT', body: JSON.stringify(article), headers: jsonHeaders });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           vscode.window.showWarningMessage(`上传文章失败(JSON): ${path.basename(t.mdPath)} -> HTTP ${res.status} ${res.statusText} ${text}，将继续上传图片。`);
         }
-      } catch (err: any) {
-        vscode.window.showWarningMessage(`上传文章异常: ${path.basename(t.mdPath)} -> ${err?.message || err}，将继续上传图片。`);
-      }
+    } catch (err: any) {
+      vscode.window.showWarningMessage(`上传文章异常: ${path.basename(t.mdPath)} -> ${err?.message || err}，将继续上传图片。`);
     }
 
-    if (uploadImageUrl) {
+    if (imageEndpoint) {
       for (const img of t.images) {
         const base64 = Buffer.from(img.buffer).toString('base64');
         const payload = { title, data: base64, name: img.name };
         const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
-        const res = await fetch(uploadImageUrl, { method: 'PUT', body: JSON.stringify(payload), headers: jsonHeaders });
+        const res = await fetch(imageEndpoint, { method: 'PUT', body: JSON.stringify(payload), headers: jsonHeaders });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           throw new Error(`上传图片失败(JSON): ${img.name} -> HTTP ${res.status} ${res.statusText} ${text}`);
