@@ -31,6 +31,9 @@ export async function findMarkdownFilesWithImageFolders(root: string): Promise<U
         // folder not exists -> ignore
       }
       tasks.push({ mdPath, mdContent, images });
+    } else if (e.isDirectory()) {
+      const subTasks = await findMarkdownFilesWithImageFolders(path.join(root, e.name));
+      tasks.push(...subTasks);
     }
   }
   return tasks;
