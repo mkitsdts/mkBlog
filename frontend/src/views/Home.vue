@@ -40,8 +40,10 @@
             type="primary"
             text
             @click="drawerVisible = true"
+            aria-label="展开头像与分类"
           >
-            <el-icon><Menu /></el-icon>
+            <el-icon class="hamburger-icon"><Menu /></el-icon>
+            <span class="sidebar-toggle-text">分类</span>
           </el-button>
           <el-input
             v-model="keyword"
@@ -134,8 +136,8 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import api from '@/api';
 import { loadConfig } from '@/config';
 import { Menu } from '@element-plus/icons-vue';
@@ -214,6 +216,43 @@ export default {
     const isActive = (c) => selectedCategories.value.includes(c);
 
     const router = useRouter();
+    const route = useRoute();
+
+    const parseCategoriesFromQuery = (raw) => {
+      if (!raw) return [];
+      const values = Array.isArray(raw) ? raw : [raw];
+      return values
+        .flatMap((item) => String(item).split(','))
+        .map((item) => item.trim())
+        .filter(Boolean);
+    };
+
+    const applyRouteState = () => {
+      keyword.value = typeof route.query.keyword === 'string' ? route.query.keyword : '';
+      selectedCategories.value = parseCategoriesFromQuery(route.query.categories);
+      const parsedPage = Number(route.query.page);
+      currentPage.value = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1;
+    };
+
+    applyRouteState();
+
+    const buildHomeQuery = () => {
+      const query = {};
+      const kw = keyword.value.trim();
+      if (kw) query.keyword = kw;
+      if (selectedCategories.value.length) query.categories = selectedCategories.value.join(',');
+      if (currentPage.value > 1) query.page = String(currentPage.value);
+      return query;
+    };
+
+    watch(
+      [currentPage, keyword, selectedCategories],
+      () => {
+        router.replace({ query: buildHomeQuery() });
+      },
+      { deep: true }
+    );
+
     const goDetail = (title) => {
       router.push(`/article/${encodeURIComponent(title)}`)
     }
@@ -239,6 +278,7 @@ export default {
     };
 
     const doSearch = () => {
+      keyword.value = keyword.value.trim();
       currentPage.value = 1;
       fetchArticles(1);
     };
@@ -327,6 +367,15 @@ export default {
   justify-content: center;
   padding: 4px 6px;
   border-radius: 6px;
+}
+.sidebar-toggle .hamburger-icon {
+  font-size: 20px;
+  margin-right: 4px;
+}
+.sidebar-toggle-text {
+  font-size: 14px;
+  color: var(--el-color-primary);
+  font-weight: 600;
 }
 .sidebar-toggle .el-icon {
   font-size: 20px;
