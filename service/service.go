@@ -27,16 +27,16 @@ func NewBlogService() (*BlogService, error) {
 
 	a := router.GetRouter().Group("/api")
 	{
-		a.GET("/articles", api.GetArticleSummary)
-		a.GET("/allarticles", api.GetAllArticleSummaries)
-		a.GET("/article/:title", api.GetArticleDetail) // 限流，防止爆破
-		a.GET("/search", api.SearchArticle)
-		a.GET("/categories", api.GetCategories)
-		a.GET("/friends", api.GetFriendList)
-		a.POST("/friends", api.ApplyFriend)
+		a.GET("/articles", api.GetArticleSummary, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.GET("/allarticles", api.GetAllArticleSummaries, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.GET("/article/:title", api.GetArticleDetail, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.GET("/search", api.SearchArticle, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.GET("/categories", api.GetCategories, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.GET("/friends", api.GetFriendList, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.POST("/friends", api.ApplyFriend, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 
-		a.GET("/comments", api.GetComments)
-		a.POST("/comments", api.AddComment)
+		a.GET("/comments", api.GetComments, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
+		a.POST("/comments", api.AddComment, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 
 		if config.Cfg.Auth.Enabled {
 			a.PUT("/article/:title", api.UploadArticle, middleware.AuthRequired())

@@ -18,7 +18,18 @@ func init() {
 			count[b.IP]++
 			if count[b.IP] > 5 { // 超过5次记录则加入黑名单
 				blacklistedIPs[b.IP] = struct{}{}
+				// TODO: 记录黑名单变更
+				database.GetDatabase().Create(&models.BlackIP{
+					IP:     b.IP,
+					Reason: "Exceeded suspected IP threshold",
+				})
 			}
+		}
+	}
+	var blackips2 []models.BlackIP
+	if err := database.GetDatabase().Find(&blackips2).Error; err == nil {
+		for _, b := range blackips2 {
+			blacklistedIPs[b.IP] = struct{}{}
 		}
 	}
 }

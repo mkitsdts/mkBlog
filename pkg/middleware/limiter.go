@@ -22,8 +22,7 @@ func RateLimit(maxRequests int, windowSeconds int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
 		mux.Lock()
-		count := limiter[clientIP]
-		limiter[clientIP] = count + 1
+		limiter[clientIP]++
 		mux.Unlock()
 		// 在窗口期后减少计数
 		go func() {
@@ -36,7 +35,7 @@ func RateLimit(maxRequests int, windowSeconds int) gin.HandlerFunc {
 				mux.Unlock()
 			})
 		}()
-		if count >= maxRequests {
+		if limiter[clientIP] >= maxRequests {
 			go database.GetDatabase().Create(&models.SuspectedIP{
 				IP:     clientIP,
 				Reason: "Rate limit exceeded",
