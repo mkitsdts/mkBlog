@@ -31,7 +31,7 @@ func InitRouter() error {
 		slog.Warn("build asset cache failed,", "error:", err)
 	}
 
-	// 1) 暴露图片目录为 /article（支持无后缀访问，自动追加 .webp）
+	// 1 暴露图片目录为 /article（支持无后缀访问，自动追加 .webp）
 	imgRoot := config.Cfg.Server.ImageSavePath
 	if abs, err := filepath.Abs(imgRoot); err == nil {
 		imgRoot = abs
