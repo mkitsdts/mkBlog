@@ -6,13 +6,29 @@
       <el-menu-item index="/about">About</el-menu-item>
     </el-menu>
     <router-view/>
+    <footer v-if="icp" class="icp-footer">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ icp }}</a>
+    </footer>
   </div>
 </template>
 
 <script>
+import { ref, onMounted } from 'vue'
+import { loadConfig } from '@/config'
+
 export default {
   name: 'App',
-};
+  setup() {
+    const icp = ref('')
+    onMounted(async () => {
+      try {
+        const conf = await loadConfig()
+        icp.value = conf.icp || ''
+      } catch {}
+    })
+    return { icp }
+  }
+}
 </script>
 
 <style>
@@ -32,5 +48,17 @@ export default {
 .el-menu-demo a {
   text-decoration: none;
 }
+.icp-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.icp-footer a {
+  color: #666;
+  text-decoration: none;
+}
+.icp-footer a:hover { text-decoration: underline; }
 </style>
 

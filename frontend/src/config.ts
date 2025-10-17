@@ -7,6 +7,7 @@ export interface SiteConfig {
   server: string
   comment_enabled: boolean
   about?: string // 添加 about 字段
+  icp?: string   // 备案号，可选
 }
 
 let cachedSite: SiteConfig | null = null
@@ -24,7 +25,8 @@ export async function loadConfig(): Promise<SiteConfig> {
       avatarPath: site.avatarPath || 'avatar.jpg',
       server: site.server || '',
       comment_enabled: site.comment_enabled !== false && site.comment_enabled !== 'false',
-      about: site.about || '鼠鼠已经离开了星球' // 加载 about 字段
+      about: site.about || '鼠鼠已经离开了星球', // 加载 about 字段
+      icp: site.icp || ''
     }
   } catch (e) {
     console.error('加载 config.yaml 失败, 使用默认站点配置', e)
