@@ -5,9 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/andybalholm/brotli"
@@ -28,8 +30,22 @@ type AssetCache struct {
 	items map[string]*cachedAsset // key: URL 路径 (/assets/xxx.css 或 /index.html)
 }
 
-func BuildAssetCache(root string) (*AssetCache, error) {
-	ac := &AssetCache{items: make(map[string]*cachedAsset)}
+var globalAssetCache *AssetCache
+var once sync.Once
+
+func init() {
+	once.Do(func() {
+		BuildAssetCache("./static")
+	})
+	go WatchCacheFiles("./static")
+}
+
+func GetGlobalAssetCache() *AssetCache {
+	return globalAssetCache
+}
+
+func BuildAssetCache(root string) {
+	globalAssetCache = &AssetCache{items: make(map[string]*cachedAsset)}
 	// 允许的扩展名集合
 	allow := map[string]string{
 		".html": "text/html; charset=utf-8",
@@ -76,7 +92,7 @@ func BuildAssetCache(root string) (*AssetCache, error) {
 		_ = brWriter.Close()
 		ca.brData = []byte(brBuf.String())
 
-		ac.items[webPath] = ca
+		globalAssetCache.items[webPath] = ca
 		return nil
 	}
 
@@ -100,10 +116,9 @@ func BuildAssetCache(root string) (*AssetCache, error) {
 		return addFile(path, webPath, info)
 	})
 	if err != nil {
-		return nil, err
+		return
 	}
-
-	return ac, nil
+	slog.Info("asset cache built", "count", len(globalAssetCache.items))
 }
 
 func (ac *AssetCache) Get(path string) *cachedAsset {

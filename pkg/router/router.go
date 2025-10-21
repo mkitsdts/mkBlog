@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log/slog"
 	"mkBlog/config"
 	"mkBlog/pkg/cache"
 	"mkBlog/pkg/middleware"
@@ -25,12 +24,6 @@ func InitRouter() error {
 	// 启用黑名单
 	r.Use(middleware.Blacklist())
 
-	// 构建静态资源内存缓存（假设构建产物都放在 ./static）
-	cache, err := cache.BuildAssetCache("./static")
-	if err != nil {
-		slog.Warn("build asset cache failed,", "error:", err)
-	}
-
 	// 1 暴露图片目录为 /article（支持无后缀访问，自动追加 .webp）
 	imgRoot := config.Cfg.Server.ImageSavePath
 	if abs, err := filepath.Abs(imgRoot); err == nil {
@@ -51,10 +44,10 @@ func InitRouter() error {
 
 		// 如果是单段路径 /article/:title（没有后续文件名），这是前端 SPA 的文章详情路由，直接返回 index.html
 		if !strings.Contains(rel, "/") || strings.HasSuffix(clean, "/") {
-			if cache != nil {
+			if cache.GetGlobalAssetCache() != nil {
 				// 复用缓存处理器返回 SPA 入口
 				c.Request.URL.Path = "/"
-				cache.Handler()(c)
+				cache.GetGlobalAssetCache().Handler()(c)
 			} else {
 				c.File("./static/index.html")
 			}
@@ -97,17 +90,17 @@ func InitRouter() error {
 	})
 
 	// 2) 其它静态资源
-	if cache != nil {
-		r.GET("/assets/*any", cache.Handler())
-		r.GET("/", cache.Handler())
-		r.GET("/index.html", cache.Handler())
+	if cache.GetGlobalAssetCache() != nil {
+		r.GET("/assets/*any", cache.GetGlobalAssetCache().Handler())
+		r.GET("/", cache.GetGlobalAssetCache().Handler())
+		r.GET("/index.html", cache.GetGlobalAssetCache().Handler())
 		r.NoRoute(func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 				c.JSON(404, gin.H{"msg": "not found"})
 				return
 			}
 			c.Request.URL.Path = "/"
-			cache.Handler()(c)
+			cache.GetGlobalAssetCache().Handler()(c)
 		})
 	} else {
 		r.Static("/assets", "./static/assets")
