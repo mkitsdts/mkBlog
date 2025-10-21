@@ -152,7 +152,7 @@ export default {
     const categories = ref([]);
     const selectedCategories = ref([]);
     const currentPage = ref(1);
-    const pageSize = ref(5);
+    const pageSize = ref(18);
     const total = ref(0);
     const isMobile = ref(false);
     const drawerVisible = ref(false);
@@ -160,7 +160,10 @@ export default {
     const updateIsMobile = () => {
       isMobile.value = window.innerWidth <= 768;
       if (!isMobile.value) {
+        // if desktop, close drawer
         drawerVisible.value = false;
+      } else {
+        pageSize.value = 10;
       }
     };
 
