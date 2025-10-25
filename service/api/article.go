@@ -45,7 +45,12 @@ func UploadArticle(c *gin.Context) {
 	if len(article.Content) < 100 {
 		summary = article.Content
 	} else {
-		summary = article.Content[:100]
+		runes := []rune(article.Content)
+		if len(runes) > 100 {
+			summary = string(runes[:100])
+		} else {
+			summary = article.Content
+		}
 	}
 	// 生成摘要时去除 Markdown 语法
 	summary = utils.StripMarkdown(summary)
