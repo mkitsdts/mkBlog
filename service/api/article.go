@@ -147,12 +147,6 @@ func GetArticleSummary(c *gin.Context) {
 	}
 
 	query := database.GetDatabase().Model(&models.ArticleSummary{})
-	// 关键词搜索（title/summary 模糊匹配）
-	q := strings.TrimSpace(c.Query("q"))
-	if q != "" {
-		like := "%" + q + "%"
-		query = query.Where("title LIKE ? OR summary LIKE ?", like, like)
-	}
 	if len(filters) == 1 {
 		query = query.Where("category = ?", filters[0])
 	} else if len(filters) > 1 {
@@ -202,27 +196,24 @@ func SearchArticle(c *gin.Context) {
 	if err != nil || pageSize <= 0 {
 		pageSize = 10
 	}
+	// 不支持查询非中英文字符
+	if utils.ContainsCJK(q) {
+		c.JSON(400, gin.H{"msg": "invalid query"})
+		return
+	}
 
-	// 统计匹配总数（以详情表为准，Title 唯一）
 	var total int64
-	if err := database.GetDatabase().Raw(countSQL, q).Scan(&total).Error; err != nil {
+	likeTerm := "%" + q + "%"
+	if err := database.GetDatabase().Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
-	// FULLTEXT 在中文环境常因最小分词长度或停用词导致 0 结果；若查询包含 CJK 则回退 LIKE
-	usedLike := false
-	if total == 0 && utils.ContainsCJK(q) {
-		likeTerm := "%" + q + "%"
-		if err := database.GetDatabase().Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
-			c.JSON(500, gin.H{"msg": "server error"})
-			return
-		}
-		usedLike = true
-	}
+
 	if total == 0 {
 		c.JSON(200, gin.H{"articles": []models.ArticleSummary{}, "total": 0, "page": page, "maxPage": 0})
 		return
 	}
+
 	if (int64(page)-1)*int64(pageSize) >= total {
 		c.JSON(404, gin.H{"msg": "no more articles"})
 		return
@@ -231,19 +222,41 @@ func SearchArticle(c *gin.Context) {
 	// 选出摘要列表
 	// FULLTEXT 模式按相关性排；LIKE 模式按更新时间排序
 	var articles []models.ArticleSummary
-	if usedLike {
-		likeTerm := "%" + q + "%"
-		if err := database.GetDatabase().Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
-			c.JSON(500, gin.H{"msg": "server error"})
-			return
-		}
-	} else if err := database.GetDatabase().Raw(listSQL, q, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+	if err := database.GetDatabase().Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
 
+	// 对结果进行排序，优先匹配标题的文章
+	record := make(map[string]int)
+	for i := range articles {
+		if articles[i].Title == q {
+			record[articles[i].Title] = 1
+			continue
+		}
+		if strings.Contains(articles[i].Title, q) {
+			record[articles[i].Title] = 2
+			continue
+		}
+		record[articles[i].Title] = 3
+	}
+	var result1 []models.ArticleSummary
+	var result2 []models.ArticleSummary
+	var result3 []models.ArticleSummary
+	for i := range articles {
+		switch record[articles[i].Title] {
+		case 1:
+			result1 = append(result1, articles[i])
+		case 2:
+			result2 = append(result2, articles[i])
+		default:
+			result3 = append(result3, articles[i])
+		}
+	}
+	result := append(result1, result2...)
+	result = append(result, result3...)
 	c.JSON(200, gin.H{
-		"articles": articles,
+		"articles": result,
 		"total":    total,
 		"page":     page,
 		"maxPage":  (total + int64(pageSize) - 1) / int64(pageSize),
