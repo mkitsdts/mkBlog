@@ -63,8 +63,8 @@ func UploadArticle(c *gin.Context) {
 
 	if err := database.GetDatabase().Clauses(
 		clause.OnConflict{
-			Columns:   []clause.Column{{Name: "title"}},                        // 冲突字段
-			DoUpdates: clause.AssignmentColumns([]string{"content", "author"}), // 更新的字段
+			Columns:   []clause.Column{{Name: "title"}},                                     // 冲突字段
+			DoUpdates: clause.AssignmentColumns([]string{"content", "author", "update_at"}), // 更新的字段
 		},
 	).Create(&artd).Error; err != nil {
 		slog.Error("insert article detail failed ", "error: ", err)
@@ -72,8 +72,8 @@ func UploadArticle(c *gin.Context) {
 
 	if err := database.GetDatabase().Clauses(
 		clause.OnConflict{
-			Columns:   []clause.Column{{Name: "title"}},                          // 冲突字段
-			DoUpdates: clause.AssignmentColumns([]string{"summary", "category"}), // 更新的字段
+			Columns:   []clause.Column{{Name: "title"}},                                       // 冲突字段
+			DoUpdates: clause.AssignmentColumns([]string{"summary", "category", "update_at"}), // 更新的字段
 		},
 	).Create(&arts).Error; err != nil {
 		slog.Error("insert article summary failed ", "error: ", err)
