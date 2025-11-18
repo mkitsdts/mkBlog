@@ -1,8 +1,8 @@
 mysql:
-  host: mkblog-db     # 数据库地址
+  host: localhost     # 数据库地址
   port: 3306          # 数据库端口
-  user: mkblog        # 数据库用户
-  password: mkblog    # 数据库密码
+  user: root        # 数据库用户
+  password: root    # 数据库密码
   name: mkblog        # 数据库名称
 
 tls:
@@ -11,7 +11,7 @@ tls:
   key: ./static/server.key    # TLS密钥文件路径
 
 auth:
-  enabled: true                         # 是否启用身份验证
+  enabled: false                         # 是否启用身份验证
   secret: "123456789015234564892545456" # 自行设置验证密码
 
 server:
@@ -21,6 +21,7 @@ server:
     requests: 100                # 每个IP在duration内最多允许的请求数
     duration: 5                  # 限制的时间窗口，单位为秒
   devmode: true
+  http3_enabled: true
 
 site:
   signature: "鼠鼠是穿越者..."      # 个性签名
@@ -28,5 +29,5 @@ site:
   avatarPath: avatar.jpg          # 头像路径
   server: http://localhost:8080   # 服务器地址(端口为80/443时后面不需要加端口号)
   devmode: true                   # 开发模式，启用后前端使用未压缩的资源文件
-  comment_enabled: true           # 是否启用评论功能
+  comment_enabled: false           # 是否启用评论功能
   icp: 粤ICP备123456789号        # 备案号（可选）

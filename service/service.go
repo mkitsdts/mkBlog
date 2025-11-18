@@ -12,6 +12,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 type BlogService struct {
@@ -57,6 +60,28 @@ func (s *BlogService) Start() {
 	if config.Cfg.Server.Devmode {
 		go func() {
 			log.Println(http.ListenAndServe(":6060", nil))
+		}()
+	}
+	if config.Cfg.Server.HTTP3Enabled {
+		cert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
+		if err != nil {
+			slog.Error("failed to load TLS certificate for HTTP3", "error", err)
+			return
+		}
+		srv := http3.Server{
+			Handler: router.GetRouter(),
+			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
+			TLSConfig: http3.ConfigureTLSConfig(&tls.Config{
+				MinVersion:   tls.VersionTLS13,
+				Certificates: []tls.Certificate{cert},
+			}),
+			QUICConfig: &quic.Config{},
+		}
+		slog.Info("starting HTTP3 server", "port", config.Cfg.Server.Port)
+		go func() {
+			if err := srv.ListenAndServe(); err != nil {
+				slog.Error("failed to start HTTP3 server", "error", err)
+			}
 		}()
 	}
 	if config.Cfg.TLS.Enabled {

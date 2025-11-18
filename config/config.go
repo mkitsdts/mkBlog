@@ -34,7 +34,8 @@ type ServerConfig struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
 	} `json:"limiter" yaml:"limiter"`
-	Devmode bool `json:"devmode" yaml:"devmode"`
+	Devmode      bool `json:"devmode" yaml:"devmode"`
+	HTTP3Enabled bool `json:"http3_enabled" yaml:"http3_enabled"`
 }
 
 type Config struct {
@@ -56,7 +57,7 @@ func init() {
 		if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
 			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 		}
-		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
+		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 		return // Loaded from file, skip env vars
 	}
 	if host := os.Getenv("DB_HOST"); host != "" {
