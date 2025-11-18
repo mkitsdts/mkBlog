@@ -26,6 +26,16 @@ type AuthConfig struct {
 	Secret  string `json:"secret" yaml:"secret"`
 }
 
+type SiteConfig struct {
+	Signature      string `json:"signature" yaml:"signature"`
+	About          string `json:"about" yaml:"about"`
+	AvatarPath     string `json:"avatarPath" yaml:"avatarPath"`
+	Server         string `json:"server" yaml:"server"`
+	DevMode        bool   `json:"devmode" yaml:"devmode"`
+	CommentEnabled bool   `json:"comment_enabled" yaml:"comment_enabled"`
+	ICP            string `json:"icp" yaml:"icp"`
+}
+
 type ServerConfig struct {
 	Port          int    `json:"port" yaml:"port"`
 	Host          string `json:"host" yaml:"host"`
@@ -43,6 +53,7 @@ type Config struct {
 	MySQL  MySQLConfig  `json:"mysql" yaml:"mysql"`
 	TLS    TLSConfig    `json:"tls" yaml:"tls"`
 	Auth   AuthConfig   `json:"auth" yaml:"auth"`
+	Site   SiteConfig   `json:"site" yaml:"site"`
 }
 
 var Cfg *Config = &Config{}

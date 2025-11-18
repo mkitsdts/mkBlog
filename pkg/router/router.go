@@ -29,7 +29,28 @@ func InitRouter() error {
 	if abs, err := filepath.Abs(imgRoot); err == nil {
 		imgRoot = abs
 	}
-	r.StaticFile("/config.yaml", "./config.yaml")
+	//
+	r.GET("/api/site", func(c *gin.Context) {
+		site := config.Cfg.Site
+		public := struct {
+			Signature      string `json:"signature"`
+			About          string `json:"about"`
+			AvatarPath     string `json:"avatarPath"`
+			Server         string `json:"server"`
+			DevMode        bool   `json:"devmode"`
+			CommentEnabled bool   `json:"comment_enabled"`
+			ICP            string `json:"icp"`
+		}{
+			Signature:      site.Signature,
+			About:          site.About,
+			AvatarPath:     site.AvatarPath,
+			Server:         site.Server,
+			DevMode:        site.DevMode,
+			CommentEnabled: site.CommentEnabled,
+			ICP:            site.ICP,
+		}
+		c.JSON(200, public)
+	})
 	// 自定义处理：优先尝试原路径；如最后一段无扩展名，则尝试追加 .webp
 	r.GET("/article/*rel", func(c *gin.Context) {
 		rel := strings.TrimPrefix(c.Param("rel"), "/")

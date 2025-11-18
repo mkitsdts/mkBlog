@@ -18,8 +18,7 @@ export async function loadConfig(): Promise<SiteConfig> {
     const res = await fetch('/config.yaml', { cache: 'no-store' })
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const text = await res.text()
-    const parsed: any = yaml.load(text) || {}
-    const site: any = parsed.site || {}
+    const site: any = yaml.load(text) || {}
     cachedSite = {
       signature: site.signature || '鼠鼠很懒，什么都没有留下',
       avatarPath: site.avatarPath || 'avatar.jpg',
