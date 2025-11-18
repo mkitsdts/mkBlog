@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { findMarkdownFilesWithImageFolders } from './utils/fs';
 import { buildArticleEndpoint, buildImageEndpoint } from './net/api';
 
@@ -133,6 +134,87 @@ export async function uploadFolderAsBlog(uri?: vscode.Uri) {
     }
   }
   vscode.window.showInformationMessage(`上传完成，共 ${tasks.length} 篇。`);
+}
+
+export async function uploadFileAsBlog(uri?: vscode.Uri) {
+  const cfg = vscode.workspace.getConfiguration();
+  const baseUrl = (cfg.get<string>('mkBlog.baseUrl') || '').trim();
+  const token = cfg.get<string>('mkBlog.authToken') || '';
+  if (!baseUrl) {
+    throw new Error('未配置 mkBlog.baseUrl');
+  }
+
+  // determine file path
+  let mdPath: string | undefined;
+  if (uri && uri.fsPath) mdPath = uri.fsPath;
+  else if (vscode.window.activeTextEditor) mdPath = vscode.window.activeTextEditor.document.uri.fsPath;
+  if (!mdPath) {
+    throw new Error('未指定要上传的文件，且当前没有打开文件');
+  }
+  if (!mdPath.toLowerCase().endsWith('.md')) {
+    throw new Error('仅支持上传 Markdown 文件（.md）');
+  }
+
+  const mdContent = await fs.readFile(mdPath, 'utf8');
+  const title = path.basename(mdPath, '.md');
+
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  const now = new Date();
+  const updateAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+  const meta = extractMeta(mdContent);
+  const article: Record<string, any> = {
+    title,
+    update_at: updateAt,
+    content: meta.content,
+  };
+  if (meta.author) article.author = meta.author;
+  else article.author = cfg.get<string>('mkBlog.defaultAuthor') ?? cfg.get<string>('mkBlog.author');
+
+  if (meta.category) article.category = meta.category;
+  else article.category = cfg.get<string>('mkBlog.defaultCategory');
+
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  try {
+    const articleUrl = buildArticleEndpoint(baseUrl, title);
+    const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
+    const res = await fetch(articleUrl, { method: 'PUT', body: JSON.stringify(article), headers: jsonHeaders });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`上传文章失败: HTTP ${res.status} ${res.statusText} ${text}`);
+    }
+  } catch (err: any) {
+    throw new Error(`上传文章异常: ${err?.message || err}`);
+  }
+
+  // upload images if there is a sibling folder named after the md file
+  const folder = path.join(path.dirname(mdPath), title);
+  const imageEndpoint = buildImageEndpoint(baseUrl);
+  try {
+    const imgEntries = await fs.readdir(folder, { withFileTypes: true });
+    for (const ie of imgEntries) {
+      if (ie.isFile()) {
+        const ext = path.extname(ie.name).toLowerCase();
+        if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)) {
+          const buf = await fs.readFile(path.join(folder, ie.name));
+          const base64 = Buffer.from(buf).toString('base64');
+          const payload = { title, data: base64, name: ie.name };
+          const jsonHeaders: Record<string, string> = { ...headers, 'Content-Type': 'application/json' };
+          const res = await fetch(imageEndpoint, { method: 'PUT', body: JSON.stringify(payload), headers: jsonHeaders });
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`上传图片失败: ${ie.name} -> HTTP ${res.status} ${res.statusText} ${text}`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // folder may not exist — ignore
+  }
+
+  vscode.window.showInformationMessage(`上传完成：${title}`);
 }
 
 

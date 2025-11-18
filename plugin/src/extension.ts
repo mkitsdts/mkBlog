@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ArticleProvider, ArticleTreeItem } from './tree/ArticleProvider';
 import { fetchArticles, deleteArticleByTitle } from './net/api';
-import { uploadFolderAsBlog } from './uploader';
+import { uploadFolderAsBlog, uploadFileAsBlog } from './uploader';
 
 export async function activate(context: vscode.ExtensionContext) {
   const articleProvider = new ArticleProvider(async () => {
@@ -72,6 +72,41 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     })
   );
+
+  // 单文件上传命令 & 状态栏按钮（仅在 Markdown 文件时显示）
+  context.subscriptions.push(
+    vscode.commands.registerCommand('mkBlog.uploadCurrentFile', async (uri?: vscode.Uri) => {
+      try {
+        await uploadFileAsBlog(uri);
+        await articleProvider.refresh();
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`上传失败: ${err?.message || err}`);
+      }
+    })
+  );
+
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.command = 'mkBlog.uploadCurrentFile';
+  statusBar.text = '$(cloud-upload) 上传到 mkBlog';
+  context.subscriptions.push(statusBar);
+
+  function updateStatusBar(editor?: vscode.TextEditor | undefined) {
+    const e = editor ?? vscode.window.activeTextEditor;
+    if (!e || !e.document) {
+      statusBar.hide();
+      return;
+    }
+    const lang = e.document.languageId;
+    const file = e.document.fileName || '';
+    if (lang === 'markdown' || file.toLowerCase().endsWith('.md')) {
+      statusBar.show();
+    } else {
+      statusBar.hide();
+    }
+  }
+
+  updateStatusBar();
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
 
   // 激活后自动加载一次
   articleProvider.refresh();
