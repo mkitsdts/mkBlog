@@ -1,0 +1,25 @@
+name: Deploy mkBlog to server machine
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add SSH known host
+      run: |
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Run remote deploy commands
+      run: |
+        ssh -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          "cd ${{ secrets.REMOTE_REPO_PATH }} && git pull origin main && make all"
