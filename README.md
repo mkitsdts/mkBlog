@@ -22,7 +22,7 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 
 编写博客时，如果有带图片，路径不需要填写后缀，如果填写后缀需要填写 webp ，因为后端接收图片时会将图片转换成 webp 格式。
 
-上传文件可以通过 CLI 提供的 mkblog push 命令上传，但主包目前使用的方案是通过 vscode 插件作为一个后台管理，通过填写地址实现对博客的增删改
+目前上传文件的方案是通过 vscode 插件作为一个后台管理，通过填写地址实现对博客的增删改。[插件](plugin) 可以自行编译或者选择发行版的插件。
 
 ## 技术栈
 
@@ -63,15 +63,18 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
    
 在 `config.yaml` 里，前往 [配置文件](config.yaml) 查看注释
 
-3. **启动后端服务**
-```bash
-go mod tidy
-go run main.go
-```
+3. **启动服务**
+
+最直接的方式是使用 Makefile ， 一行 make all 搞定
+
+也可通过 github action 实现自动化部署。需要在 github 里配置秘密参数
+
+或者 go build 编译成二进制文件后部署
 
 ### Docker 部署
 
 **数据库 Docker 部署：**
+如果使用 docker 部署需要注意写入环境变量
 ```bash
 cd docker
 docker-compose up -d
