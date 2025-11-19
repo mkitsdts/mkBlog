@@ -10,16 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup SSH agent
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    - name: Prepare deploy key file
+      run: |
+        mkdir -p ~/.ssh
+        # 写入 secret（不要在日志中打印密钥）
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        # 删除可能的 CRLF
+        sed -i 's/\r$//' ~/.ssh/deploy_key || true
+        chmod 600 ~/.ssh/deploy_key
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Add SSH known host
-      run: |
-        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Run remote deploy commands
+    - name: Run remote deploy commands using key file
       run: |
-        ssh -o BatchMode=yes ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+        ssh -o BatchMode=yes -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
           "cd ${{ secrets.REMOTE_REPO_PATH }} && git pull origin main && make all"
