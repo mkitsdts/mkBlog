@@ -5,10 +5,14 @@ mysql:
   password: root    # 数据库密码
   name: mkblog        # 数据库名称
 
+# 腾讯云 tencentcloud 阿里云 alicloud
 tls:
-  enabled: false              # 是否启用TLS
-  cert: ./static/server.crt   # TLS证书文件路径
-  key: ./static/server.key    # TLS密钥文件路径
+  enabled: true                # 是否启用TLS
+  cert: ./static/server.crt     # TLS证书文件路径
+  key: ./static/server.key      # TLS密钥文件路径
+  cert_provider: "tencentcloud" # 证书提供者
+  domain_provider: "alicloud"   # 域名提供者
+  original_cert_id: "T6KwQ50s"  # 原始证书ID（用于续期）
 
 auth:
   enabled: false                         # 是否启用身份验证

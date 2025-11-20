@@ -16,9 +16,18 @@ type MySQLConfig struct {
 }
 
 type TLSConfig struct {
-	Enabled bool   `json:"enabled" yaml:"enabled"`
-	Cert    string `json:"cert" yaml:"cert"`
-	Key     string `json:"key" yaml:"key"`
+	Enabled              bool   `json:"enabled" yaml:"enabled"`
+	CheckInterval        int    `json:"check_interval" yaml:"check_interval"` // check interval in hours
+	Cert                 string `json:"cert" yaml:"cert"`
+	Key                  string `json:"key" yaml:"key"`
+	Domain               string `json:"domain" yaml:"domain"`
+	OriginalCertID       string `json:"original_cert_id" yaml:"original_cert_id"`
+	CertProvider         string `json:"cert_provider" yaml:"cert_provider"`
+	DomainProvider       string `json:"domain_provider" yaml:"domain_provider"`
+	CertProviderKey      string `json:"cert_provider_key" yaml:"cert_provider_key"`
+	CertProviderSecret   string `json:"cert_provider_secret" yaml:"cert_provider_secret"`
+	DomainProviderKey    string `json:"domain_provider_key" yaml:"domain_provider_key"`
+	DomainProviderSecret string `json:"domain_provider_secret" yaml:"domain_provider_secret"`
 }
 
 type AuthConfig struct {
@@ -39,7 +48,7 @@ type SiteConfig struct {
 type ServerConfig struct {
 	Port          int    `json:"port" yaml:"port"`
 	Host          string `json:"host" yaml:"host"`
-	ImageSavePath string `json:"imageSavePath" yaml:"imageSavePath"`
+	ImageSavePath string `json:"image_save_path" yaml:"image_save_path"`
 	Limiter       struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
@@ -141,6 +150,14 @@ func init() {
 	} else {
 		Cfg.TLS.Key = "localhost.key"
 		slog.Warn("TLS key not set, defaulting to localhost.key")
+	}
+
+	if file, err := os.Open("tls_cert_id"); err == nil {
+		defer file.Close()
+		var id string
+		if err := yaml.NewDecoder(file).Decode(&id); err == nil {
+			Cfg.TLS.OriginalCertID = id
+		}
 	}
 
 	slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
