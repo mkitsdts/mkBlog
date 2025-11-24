@@ -84,4 +84,6 @@ docker-compose up -d
 
 前后端统一地址，所以没有跨域问题
 
+建议使用 Let's Encrypt ，可以自动续费，一劳永逸。
+
 如果需要配置 TLS 证书，可以在 config.yaml 里 tls 配置项的 enabled 选项打开，然后把 TLS 证书拷贝到 static 文件夹下

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log/slog"
 	"mkBlog/models"
 	"mkBlog/pkg/bloom"
@@ -188,6 +189,7 @@ func SearchArticle(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "missing query q"})
 		return
 	}
+	fmt.Println(q)
 	page, err := strconv.Atoi(c.Query("page"))
 	if err != nil || page < 1 {
 		page = 1
@@ -197,14 +199,13 @@ func SearchArticle(c *gin.Context) {
 		pageSize = 10
 	}
 	// 不支持查询非中英文字符
-	if utils.ContainsCJK(q) {
+	if !utils.ContainsCJK(q) {
 		c.JSON(400, gin.H{"msg": "invalid query"})
 		return
 	}
 
 	var total int64
-	likeTerm := "%" + q + "%"
-	if err := database.GetDatabase().Raw(countLikeSQL, likeTerm).Scan(&total).Error; err != nil {
+	if err := database.GetDatabase().Raw(countSQL, q).Scan(&total).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}
@@ -222,7 +223,7 @@ func SearchArticle(c *gin.Context) {
 	// 选出摘要列表
 	// FULLTEXT 模式按相关性排；LIKE 模式按更新时间排序
 	var articles []models.ArticleSummary
-	if err := database.GetDatabase().Raw(listLikeSQL, likeTerm, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
+	if err := database.GetDatabase().Raw(listSQL, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})
 		return
 	}

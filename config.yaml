@@ -3,7 +3,7 @@ mysql:
   port: 3306          # 数据库端口
   user: root        # 数据库用户
   password: root    # 数据库密码
-  name: mkblog        # 数据库名称
+  name: mkBlog        # 数据库名称
 
 tls:
   enabled: false              # 是否启用TLS
@@ -21,7 +21,7 @@ server:
     requests: 100                # 每个IP在duration内最多允许的请求数
     duration: 5                  # 限制的时间窗口，单位为秒
   devmode: true
-  http3_enabled: true
+  http3_enabled: false
 
 site:
   signature: "鼠鼠是穿越者..."      # 个性签名

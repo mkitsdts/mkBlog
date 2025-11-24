@@ -79,6 +79,6 @@ func InitDatabase() error {
 	}
 
 	// FULLTEXT 索引由 GORM tag 自动处理（models.ArticleDetail.Content 上的 index:ft_content,class:FULLTEXT,option:WITH PARSER ngram）
-
+	db.Exec(createNgramFullTextIndexSQL)
 	return nil
 }

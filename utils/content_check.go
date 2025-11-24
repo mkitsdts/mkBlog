@@ -3,7 +3,7 @@ package utils
 // 粗略判断查询字符串中是否包含中日韩统一表意文字（CJK Unified Ideographs）
 func ContainsCJK(s string) bool {
 	for _, r := range s {
-		// 常用中日韩汉字范围：
+		// 中英文范围：
 		if (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
 			(r >= 0x3400 && r <= 0x4DBF) || // CJK Unified Ideographs Extension A
 			(r >= 0x20000 && r <= 0x2A6DF) || // Extension B
