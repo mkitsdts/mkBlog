@@ -115,6 +115,7 @@ func InitRouter() error {
 		r.GET("/assets/*any", cache.GetGlobalAssetCache().Handler())
 		r.GET("/", cache.GetGlobalAssetCache().Handler())
 		r.GET("/index.html", cache.GetGlobalAssetCache().Handler())
+		r.GET("/icon.svg", cache.GetGlobalAssetCache().Handler())
 		r.NoRoute(func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 				c.JSON(404, gin.H{"msg": "not found"})

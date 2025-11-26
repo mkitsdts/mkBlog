@@ -37,13 +37,13 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  background-image: url('https://source.unsplash.com/random/1920x1080'); /* Add a random background image */
+  background-image: url('https://source.unsplash.com/random/1920x1080');
   background-size: cover;
   background-attachment: fixed;
   min-height: 100vh;
 }
 .el-menu-demo {
-  background-color: rgba(255, 255, 255, 0.7) !important; /* Make menu transparent */
+  background-color: rgba(255, 255, 255, 0.7) !important;
 }
 .el-menu-demo a {
   text-decoration: none;

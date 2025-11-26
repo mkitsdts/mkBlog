@@ -248,13 +248,29 @@ export default {
       return query;
     };
 
-    watch(
-      [currentPage, keyword, selectedCategories],
-      () => {
+    // 防抖：避免在每次输入时立即修改路由（会导致浏览器重复请求 favicon 等资源）
+    let replaceTimer = null;
+    const scheduleReplace = () => {
+      if (replaceTimer) clearTimeout(replaceTimer);
+      replaceTimer = setTimeout(() => {
         router.replace({ query: buildHomeQuery() });
-      },
-      { deep: true }
-    );
+        replaceTimer = null;
+      }, 300);
+    };
+
+    // 只对关键字输入使用防抖，分页和分类变更立即更新路由
+    watch(keyword, () => {
+      scheduleReplace();
+    });
+
+    watch([currentPage, selectedCategories], () => {
+      // 分页或分类变化时立即同步路由
+      if (replaceTimer) {
+        clearTimeout(replaceTimer);
+        replaceTimer = null;
+      }
+      router.replace({ query: buildHomeQuery() });
+    }, { deep: true });
 
     const goDetail = (title) => {
       router.push(`/article/${encodeURIComponent(title)}`)
@@ -307,6 +323,10 @@ export default {
 
     onUnmounted(() => {
       window.removeEventListener('resize', updateIsMobile);
+      if (replaceTimer) {
+        clearTimeout(replaceTimer);
+        replaceTimer = null;
+      }
     });
 
     return {

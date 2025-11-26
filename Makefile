@@ -7,8 +7,9 @@ build:
 	go mod tidy
 	go build -o mkBlog .
 
-frontend-build:
+fbuild:
 	@echo "Installing frontend deps and building..."
+	rm -rf frontend/node_modules frontend/dist frontend/build frontend/package-lock.json
 	cd frontend && npm install && npm run build
 
 copy:
