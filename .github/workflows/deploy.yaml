@@ -24,7 +24,12 @@ jobs:
     - name: Add SSH known host
       run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+    - name: Git pull files
+      run: |
+        ssh -o BatchMode=yes -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          "cd ${{ secrets.REMOTE_REPO_PATH }} && git pull origin main"
+
     - name: Run remote deploy commands using key file
       run: |
         ssh -o BatchMode=yes -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "cd ${{ secrets.REMOTE_REPO_PATH }} && git pull origin main && make all"
+          "cd ${{ secrets.REMOTE_REPO_PATH }} && make all"
