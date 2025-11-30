@@ -126,7 +126,6 @@ func init() {
 	if !Cfg.TLS.Enabled {
 		slog.Info("loaded configuration successfully", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 		slog.Warn("TLS is disabled, consider enabling it in production environments")
-		panic("TLS is disabled, please enable it for better security")
 	}
 
 	if cert := os.Getenv("TLS_CERT"); cert != "" {

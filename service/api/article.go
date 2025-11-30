@@ -80,7 +80,7 @@ func UploadArticle(c *gin.Context) {
 		slog.Error("insert article summary failed ", "error: ", err)
 	}
 
-	bloom.GetBloomFilter().Add([]byte(article.Title))
+	bloom.GetBloomFilter().Add([]rune(article.Title))
 	c.JSON(200, gin.H{"msg": "successfully added article"})
 }
 
@@ -93,7 +93,7 @@ func GetArticleDetail(c *gin.Context) {
 	}
 
 	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
-	if !bloom.GetBloomFilter().Exists([]byte(title)) {
+	if !bloom.GetBloomFilter().Exists([]rune(title)) {
 		c.JSON(404, gin.H{"msg": "article not found"})
 		return
 	}
@@ -272,7 +272,7 @@ func DeleteArticle(c *gin.Context) {
 	}
 
 	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
-	if !bloom.GetBloomFilter().Exists([]byte(title)) {
+	if !bloom.GetBloomFilter().Exists([]rune(title)) {
 		c.JSON(404, gin.H{"msg": "article not found"})
 		return
 	}
@@ -289,6 +289,6 @@ func DeleteArticle(c *gin.Context) {
 		}
 		time.Sleep(10 << i * time.Millisecond)
 	}
-	bloom.GetBloomFilter().Remove([]byte(title))
+	bloom.GetBloomFilter().Remove([]rune(title))
 	c.JSON(200, gin.H{"msg": "successfully deleted article"})
 }

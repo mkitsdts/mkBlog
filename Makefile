@@ -16,7 +16,7 @@ copy:
 	@echo "Copying frontend build to static/ and static/assets/..."
 	mkdir -p static static/assets
 	@# detect build output dir (common: dist or build)
-	if [ -d frontend/dist ]; then DIST=frontend/dist; elif [ -d frontend/build ]; then DIST=frontend/build; else echo "No frontend build dir (frontend/dist or frontend/build). Run 'make frontend-build' first." && exit 1; fi; \
+	if [ -d frontend/dist ]; then DIST=frontend/dist; elif [ -d frontend/build ]; then DIST=frontend/build; else echo "No frontend build dir (frontend/dist or frontend/build). Run 'make fbuild' first." && exit 1; fi; \
 	cp -f "$$DIST/index.html" static/; \
 	find "$$DIST" -type f \( -name '*.css' -o -name '*.js' \) -exec cp {} static/assets/ \;
 

@@ -7,3 +7,6 @@
 /plugin/*.vsix
 /.vscode/
 /config.yaml
+/mkblog.pid
+/nohup.out
+/test_add_article.sh
