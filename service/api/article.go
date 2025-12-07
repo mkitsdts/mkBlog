@@ -94,7 +94,7 @@ func GetArticleDetail(c *gin.Context) {
 
 	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
 	if !bloom.GetBloomFilter().Exists([]rune(title)) {
-		c.JSON(404, gin.H{"msg": "article not found"})
+		c.JSON(403, gin.H{"msg": "article not found"})
 		return
 	}
 
@@ -273,7 +273,7 @@ func DeleteArticle(c *gin.Context) {
 
 	// 先检查布隆过滤器，快速判断文章是否存在，减少数据库压力
 	if !bloom.GetBloomFilter().Exists([]rune(title)) {
-		c.JSON(404, gin.H{"msg": "article not found"})
+		c.JSON(403, gin.H{"msg": "article not found"})
 		return
 	}
 

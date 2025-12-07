@@ -14,7 +14,7 @@ import (
 var comment_count map[string]int
 var mtx sync.Mutex
 
-func init() {
+func Init() {
 	// count comment from database
 	comment_count = make(map[string]int)
 	var rows []struct {
