@@ -19,7 +19,7 @@ const (
 
 var bf *BloomFilter
 
-func init() {
+func Init() {
 	bf = &BloomFilter{
 		bitset:   make([]byte, byteSize),
 		bitcount: make([]uint8, byteSize),
@@ -48,13 +48,22 @@ func init() {
 		},
 	}
 	var titles []string
-	database.GetDatabase().Model(models.ArticleDetail{}).Select("title").Find(&titles)
+	db := database.GetDatabase()
+	if db == nil {
+		println("bloom filter database error")
+		return
+	}
+	println("bloom filter database ok")
+	db.Model(models.ArticleDetail{}).Select("title").Find(&titles)
 	for _, title := range titles {
 		bf.Add([]rune(title))
 	}
 }
 
 func GetBloomFilter() *BloomFilter {
+	if bf == nil {
+		Init()
+	}
 	return bf
 }
 

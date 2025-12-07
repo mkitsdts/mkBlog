@@ -58,7 +58,7 @@ type Config struct {
 
 var Cfg *Config = &Config{}
 
-func init() {
+func Init() {
 	// Fallback to config.yaml file if exists
 	file, err := os.Open("config.yaml")
 	if err != nil {

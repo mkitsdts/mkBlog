@@ -30,5 +30,5 @@ func WatchCacheFiles(path string) {
 }
 
 func EventHandle(event fsnotify.Event, watcher *fsnotify.Watcher) {
-	BuildAssetCache("./static")
+	BuildAssetCache(globalAssetCache.root)
 }

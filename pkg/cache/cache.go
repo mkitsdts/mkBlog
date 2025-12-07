@@ -27,17 +27,18 @@ type cachedAsset struct {
 }
 
 type AssetCache struct {
+	root  string
 	items map[string]*cachedAsset // key: URL 路径 (/assets/xxx.css 或 /index.html)
 }
 
 var globalAssetCache *AssetCache
 var once sync.Once
 
-func init() {
+func Init(root string) {
 	once.Do(func() {
-		BuildAssetCache("./static")
+		BuildAssetCache(root)
 	})
-	go WatchCacheFiles("./static")
+	go WatchCacheFiles(root)
 }
 
 func GetGlobalAssetCache() *AssetCache {
@@ -46,6 +47,7 @@ func GetGlobalAssetCache() *AssetCache {
 
 func BuildAssetCache(root string) {
 	globalAssetCache = &AssetCache{items: make(map[string]*cachedAsset)}
+	globalAssetCache.root = root
 	// 允许的扩展名集合
 	allow := map[string]string{
 		".html": "text/html; charset=utf-8",

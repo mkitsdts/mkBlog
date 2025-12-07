@@ -16,25 +16,28 @@ var once sync.Once
 
 func GetDatabase() *gorm.DB {
 	once.Do(func() {
-		if err := InitDatabase(); err != nil {
+		if err := Init(); err != nil {
 			slog.Error("failed to initialize database", "error", err)
 		}
 	})
+	if db == nil {
+		return nil
+	}
 	return db
 }
 
-func InitDatabase() error {
-	var err error
+func Init() error {
 	dsn := config.Cfg.MySQL.User + ":" + config.Cfg.MySQL.Password +
 		"@tcp(" + config.Cfg.MySQL.Host + ":" + config.Cfg.MySQL.Port + ")/" +
 		config.Cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=UTC"
 	// 等待数据库启动
 	retryTimes := 100
 	for i := range retryTimes {
-		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		tmpDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 			NowFunc: func() time.Time { return time.Now().UTC() },
 		})
 		if err == nil {
+			db = tmpDB
 			slog.Info("connected to database", "dsn", dsn)
 			break
 		}
@@ -44,7 +47,7 @@ func InitDatabase() error {
 		}
 	}
 	// 自动迁移
-	err = db.AutoMigrate(&models.ArticleSummary{},
+	err := db.AutoMigrate(&models.ArticleSummary{},
 		&models.ArticleDetail{},
 		&models.Friend{},
 		&models.Comment{},

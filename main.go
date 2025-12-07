@@ -1,11 +1,24 @@
 package main
 
 import (
+	"mkBlog/config"
+	"mkBlog/pkg/bloom"
+	"mkBlog/pkg/cache"
+	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
 	"mkBlog/service"
 )
 
+func Init() {
+	config.Init()
+	bloom.Init()
+	cache.Init("./static")
+	middleware.Init()
+}
+
 func main() {
+	Init()
+
 	if err := router.InitRouter(); err != nil {
 		panic("failed to create router: " + err.Error())
 	}

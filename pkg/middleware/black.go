@@ -9,7 +9,7 @@ import (
 
 var blacklistedIPs = make(map[string]struct{})
 
-func init() {
+func Init() {
 	// 从数据库加载
 	count := make(map[string]int)
 	var blackips []models.SuspectedIP
