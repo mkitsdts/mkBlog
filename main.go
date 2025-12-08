@@ -4,12 +4,14 @@ import (
 	"mkBlog/config"
 	"mkBlog/pkg/bloom"
 	"mkBlog/pkg/cache"
+	"mkBlog/pkg/log"
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
 	"mkBlog/service"
 )
 
 func Init() {
+	log.Init()
 	config.Init()
 	bloom.Init()
 	cache.Init("./static")
