@@ -11,6 +11,9 @@ var blacklistedIPs = make(map[string]struct{})
 
 func Init() {
 	// 从数据库加载
+	if database.GetDatabase() == nil {
+		return
+	}
 	count := make(map[string]int)
 	var blackips []models.SuspectedIP
 	if err := database.GetDatabase().Find(&blackips).Error; err == nil {
