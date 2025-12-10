@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"log/slog"
 	"mkBlog/models"
 	"mkBlog/pkg/bloom"
@@ -189,7 +188,6 @@ func SearchArticle(c *gin.Context) {
 		c.JSON(400, gin.H{"msg": "missing query q"})
 		return
 	}
-	fmt.Println(q)
 	page, err := strconv.Atoi(c.Query("page"))
 	if err != nil || page < 1 {
 		page = 1
@@ -200,6 +198,7 @@ func SearchArticle(c *gin.Context) {
 	}
 	// 不支持查询非中英文字符
 	if !utils.ContainsCJK(q) {
+		slog.Warn("invalid search query", "query", q)
 		c.JSON(400, gin.H{"msg": "invalid query"})
 		return
 	}
@@ -221,7 +220,7 @@ func SearchArticle(c *gin.Context) {
 	}
 
 	// 选出摘要列表
-	// FULLTEXT 模式按相关性排；LIKE 模式按更新时间排序
+	// 模式按相关性排；LIKE 模式按更新时间排序
 	var articles []models.ArticleSummary
 	if err := database.GetDatabase().Raw(listSQL, q, pageSize, (page-1)*pageSize).Scan(&articles).Error; err != nil {
 		c.JSON(500, gin.H{"msg": "server error"})

@@ -14,23 +14,6 @@ import (
 var comment_count map[string]int
 var mtx sync.Mutex
 
-func Init() {
-	// count comment from database
-	comment_count = make(map[string]int)
-	var rows []struct {
-		Title string
-		Count int
-	}
-	database.GetDatabase().Table("article_details AS a").
-		Select("a.title, COUNT(c.id) AS count").
-		Joins("LEFT JOIN comments c ON a.title = c.title").
-		Group("a.title").
-		Scan(&rows)
-	for _, row := range rows {
-		comment_count[row.Title] = row.Count
-	}
-}
-
 func GetCommentCount(title string) int {
 	if count, ok := comment_count[title]; ok {
 		return count

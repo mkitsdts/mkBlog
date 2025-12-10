@@ -22,6 +22,7 @@ type BlogService struct {
 
 func NewBlogService() (*BlogService, error) {
 	var service BlogService
+	api.Init()
 
 	if err := os.MkdirAll(config.Cfg.Server.ImageSavePath, 0755); err != nil {
 		slog.Error("failed to create image save path", "error", err)

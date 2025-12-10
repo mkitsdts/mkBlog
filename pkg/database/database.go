@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -27,15 +26,14 @@ func GetDatabase() *gorm.DB {
 }
 
 func Init() error {
-	dsn := config.Cfg.MySQL.User + ":" + config.Cfg.MySQL.Password +
-		"@tcp(" + config.Cfg.MySQL.Host + ":" + config.Cfg.MySQL.Port + ")/" +
-		config.Cfg.MySQL.Name + "?charset=utf8mb4&parseTime=True&loc=UTC"
+	dsn := getDSN()
+	if dsn == "" {
+		panic("unsupported database kind: " + config.Cfg.Database.Kind)
+	}
 	// 等待数据库启动
 	retryTimes := 100
 	for i := range retryTimes {
-		tmpDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-			NowFunc: func() time.Time { return time.Now().UTC() },
-		})
+		tmpDB, err := openDatabase(dsn)
 		if err == nil {
 			db = tmpDB
 			slog.Info("connected to database", "dsn", dsn)
@@ -82,6 +80,6 @@ func Init() error {
 	}
 
 	// FULLTEXT 索引由 GORM tag 自动处理（models.ArticleDetail.Content 上的 index:ft_content,class:FULLTEXT,option:WITH PARSER ngram）
-	db.Exec(createNgramFullTextIndexSQL)
+	createFullTextIndex()
 	return nil
 }
