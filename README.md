@@ -29,7 +29,7 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 - **Go 1.24** - 主要编程语言
 - **Gin** - Web 框架
 - **GORM** - ORM 框架
-- **MySQL** - 数据库
+- **MySQL 或 Postgres** - 数据库
 
 ## 功能特性
 
@@ -49,7 +49,7 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 
 ### 环境要求
 - Go 1.24+
-- MySQL 8.0+ （需要 ngram 分词器）
+- MySQL 8.0+ （需要 ngram 分词器） 或 Postgres 18.0+ （需要 zhparser 插件）
 
 ### 真机部署
 
