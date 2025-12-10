@@ -10,7 +10,9 @@ func ContainsCJK(s string) bool {
 			(r >= 0x2A700 && r <= 0x2B73F) || // Extension C
 			(r >= 0x2B740 && r <= 0x2B81F) || // Extension D
 			(r >= 0x2B820 && r <= 0x2CEAF) || // Extension E
-			(r >= 0xF900 && r <= 0xFAFF) { // CJK Compatibility Ideographs
+			(r >= 0xF900 && r <= 0xFAFF) ||
+			(r >= 0x61 && r <= 0x7A) ||
+			(r >= 0x41 && r <= 0x5A) { // CJK Compatibility Ideographs
 			return true
 		}
 	}
