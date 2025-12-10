@@ -7,12 +7,13 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-type MySQLConfig struct {
+type DatabaseConfig struct {
 	Host     string `json:"host" yaml:"host"`
 	Port     string `json:"port" yaml:"port"`
 	User     string `json:"user" yaml:"user"`
 	Password string `json:"password" yaml:"password"`
 	Name     string `json:"name" yaml:"name"`
+	Kind     string `json:"kind" yaml:"kind"`
 }
 
 type TLSConfig struct {
@@ -49,11 +50,11 @@ type ServerConfig struct {
 }
 
 type Config struct {
-	Server ServerConfig `json:"server" yaml:"server"`
-	MySQL  MySQLConfig  `json:"mysql" yaml:"mysql"`
-	TLS    TLSConfig    `json:"tls" yaml:"tls"`
-	Auth   AuthConfig   `json:"auth" yaml:"auth"`
-	Site   SiteConfig   `json:"site" yaml:"site"`
+	Server   ServerConfig   `json:"server" yaml:"server"`
+	Database DatabaseConfig `json:"database" yaml:"database"`
+	TLS      TLSConfig      `json:"tls" yaml:"tls"`
+	Auth     AuthConfig     `json:"auth" yaml:"auth"`
+	Site     SiteConfig     `json:"site" yaml:"site"`
 }
 
 var Cfg *Config = &Config{}
@@ -68,41 +69,59 @@ func Init() {
 		if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
 			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
 		}
-		slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
+		slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 		return // Loaded from file, skip env vars
 	}
 	if host := os.Getenv("DB_HOST"); host != "" {
-		Cfg.MySQL.Host = host
+		Cfg.Database.Host = host
 	} else {
-		Cfg.MySQL.Host = "localhost"
+		Cfg.Database.Host = "localhost"
 		slog.Warn("DB host not set, defaulting to localhost")
 	}
 
-	if port := os.Getenv("DB_PORT"); port != "" {
-		Cfg.MySQL.Port = port
+	if kind := os.Getenv("DB_KIND"); kind != "" {
+		Cfg.Database.Kind = kind
 	} else {
-		Cfg.MySQL.Port = "3306"
-		slog.Warn("DB port not set, defaulting to 3306")
+		Cfg.Database.Kind = "mysql"
+		slog.Warn("DB kind not set, defaulting to mysql")
+	}
+
+	if port := os.Getenv("DB_PORT"); port != "" {
+		Cfg.Database.Port = port
+	} else {
+		switch Cfg.Database.Kind {
+		case "postgres":
+			Cfg.Database.Port = "5432"
+			slog.Warn("DB port not set, defaulting to 5432 for postgres")
+			return
+		case "mysql":
+			Cfg.Database.Port = "3306"
+			slog.Warn("DB port not set, defaulting to 3306 for mysql")
+			return
+		default:
+			Cfg.Database.Port = "3306"
+			slog.Warn("DB port not set, defaulting to 3306")
+		}
 	}
 
 	if user := os.Getenv("DB_USER"); user != "" {
-		Cfg.MySQL.User = user
+		Cfg.Database.User = user
 	} else {
-		Cfg.MySQL.User = "root"
+		Cfg.Database.User = "root"
 		slog.Warn("DB user not set, defaulting to root")
 	}
 
 	if password := os.Getenv("DB_PASSWORD"); password != "" {
-		Cfg.MySQL.Password = password
+		Cfg.Database.Password = password
 	} else {
-		Cfg.MySQL.Password = "root"
+		Cfg.Database.Password = "root"
 		slog.Warn("DB password not set, defaulting to root")
 	}
 
 	if name := os.Getenv("DB_NAME"); name != "" {
-		Cfg.MySQL.Name = name
+		Cfg.Database.Name = name
 	} else {
-		Cfg.MySQL.Name = "mkblog"
+		Cfg.Database.Name = "mkblog"
 		slog.Warn("DB name not set, defaulting to mkblog")
 	}
 
@@ -124,7 +143,7 @@ func Init() {
 	}
 
 	if !Cfg.TLS.Enabled {
-		slog.Info("loaded configuration successfully", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
+		slog.Info("loaded configuration successfully", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 		slog.Warn("TLS is disabled, consider enabling it in production environments")
 	}
 
@@ -142,6 +161,6 @@ func Init() {
 		slog.Warn("TLS key not set, defaulting to localhost.key")
 	}
 
-	slog.Info("Configuration loaded", "mysql", Cfg.MySQL, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
+	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
 
 }
