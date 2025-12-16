@@ -3,6 +3,7 @@ version: '3.8'
 services:
   db:
     image: mysql:oraclelinux9
+    #image: abcfy2/zhparser:18-alpine
     container_name: mkblog-db
     restart: always
     environment:
@@ -10,16 +11,21 @@ services:
       MYSQL_DATABASE: mkblog
       MYSQL_USER: mkblog 
       MYSQL_PASSWORD: mkblog
+      #POSTGRES_DB: mkblog
+      #POSTGRES_USER: mkblog
+      #POSTGRES_PASSWORD: mkblog
     ports:
       - "3306:3306"
+      #- "5432:5432"
     volumes:
       - db_data:/var/lib/mysql
+      #- db_data:/var/lib/postgresql/data
 
   app:
     build:
       context: ..
       dockerfile: docker/dockerfile
-    container_name: mkblog-app
+    container_name: mkblog
     restart: always
     depends_on:
       - db
@@ -29,9 +35,12 @@ services:
     environment:
       - DB_HOST=mkblog-db
       - DB_PORT=3306
+      #- DB_PORT=5432
       - DB_USER=mkblog
       - DB_PASSWORD=mkblog
       - DB_NAME=mkblog
+      - DB_KIND=mysql
+      #- DB_KIND=postgres  
 
 volumes:
   db_data:
