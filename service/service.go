@@ -97,7 +97,7 @@ func (s *BlogService) Start() {
 			},
 		}
 		// Start HTTPS server
-		if err := srv.ListenAndServe(); err != nil {
+		if err := srv.ListenAndServeTLS("", ""); err != nil {
 			slog.Error("failed to start HTTPS server", "error", err)
 		}
 	} else {
