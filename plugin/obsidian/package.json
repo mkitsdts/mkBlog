@@ -1,0 +1,20 @@
+{
+  "name": "mkblog-obsidian-plugin",
+  "version": "0.0.1",
+  "description": "mkBlog management plugin for Obsidian: parse markdown header/frontmatter, upload file/folder with images, and delete remote articles.",
+  "main": "main.js",
+  "author": "mkitsdts",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "check": "tsc -p . --noEmit",
+    "build": "tsc -p . --noEmit && node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.50",
+    "esbuild": "^0.27.3",
+    "obsidian": "^1.6.7",
+    "typescript": "^5.5.4"
+  }
+}
