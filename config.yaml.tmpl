@@ -11,6 +11,13 @@ tls:
   cert: ./static/server.crt   # TLS证书文件路径
   key: ./static/server.key    # TLS密钥文件路径
 
+cert_control:
+  email: 114514@colima.com      # 注册 Let's Encrypt 账号的邮箱
+  domain: 114514.com            # 需要申请 TLS 证书的域名
+  Key:                          # 域名提供商的 API Key
+  Secret:                       # 域名提供商的 API 密钥
+  DomainProvider: Aliyun        # 域名提供商。可选： Aliyun , TencentCloud
+
 auth:
   enabled: false                        # 是否启用身份验证
   secret: "123456789015234564892545456" # 自行设置验证密码
@@ -23,6 +30,7 @@ server:
     duration: 5                  # 限制的时间窗口，单位为秒
   devmode: true
   http3_enabled: false
+  cert_ctrl_enabled: false
 
 site:
   signature: "鼠鼠是穿越者..."        # 个性签名

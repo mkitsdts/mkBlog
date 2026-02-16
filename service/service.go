@@ -8,6 +8,7 @@ import (
 	"mkBlog/config"
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
+	tlscert "mkBlog/pkg/tls_cert"
 	"mkBlog/service/api"
 	"net/http"
 	_ "net/http/pprof"
@@ -64,17 +65,12 @@ func (s *BlogService) Start() {
 		}()
 	}
 	if config.Cfg.Server.HTTP3Enabled {
-		cert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
-		if err != nil {
-			slog.Error("failed to load TLS certificate for HTTP3", "error", err)
-			return
-		}
 		srv := http3.Server{
 			Handler: router.GetRouter(),
 			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
 			TLSConfig: http3.ConfigureTLSConfig(&tls.Config{
-				MinVersion:   tls.VersionTLS13,
-				Certificates: []tls.Certificate{cert},
+				MinVersion:     tls.VersionTLS13,
+				GetCertificate: tlscert.GetCurrentCert,
 			}),
 			QUICConfig: &quic.Config{},
 		}
@@ -85,16 +81,21 @@ func (s *BlogService) Start() {
 			}
 		}()
 	}
+	if config.Cfg.CertControl.Enabled {
+		go tlscert.Start()
+	}
+	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
 	if config.Cfg.TLS.Enabled {
 		srv := &http.Server{
 			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
 			Handler: router.GetRouter(),
 			TLSConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
+				MinVersion:     tls.VersionTLS12,
+				GetCertificate: tlscert.GetCurrentCert,
 			},
 		}
 		// Start HTTPS server
-		if err := srv.ListenAndServeTLS(config.Cfg.TLS.Cert, config.Cfg.TLS.Key); err != nil {
+		if err := srv.ListenAndServe(); err != nil {
 			slog.Error("failed to start HTTPS server", "error", err)
 		}
 	} else {

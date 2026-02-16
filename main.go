@@ -7,12 +7,14 @@ import (
 	"mkBlog/pkg/log"
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
+	tlscert "mkBlog/pkg/tls_cert"
 	"mkBlog/service"
 )
 
 func Init() {
 	log.Init()
 	config.Init()
+	tlscert.Init()
 	bloom.Init()
 	cache.Init("./static")
 	middleware.Init()

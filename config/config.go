@@ -22,6 +22,15 @@ type TLSConfig struct {
 	Key     string `json:"key" yaml:"key"`
 }
 
+type TLSCertAutoControlConfig struct {
+	Enabled        bool   `json:"enabled" yaml:"enabled"`
+	Email          string `json:"email" yaml:"email"`
+	Domain         string `json:"domain" yaml:"domain"`
+	Key            string `json:"key" yaml:"key"`
+	Secret         string `json:"secret" yaml:"secret"`
+	DomainProvider string `json:"domain_provider" yaml:"domain_provider"`
+}
+
 type AuthConfig struct {
 	Enabled bool   `json:"enabled" yaml:"enabled"`
 	Secret  string `json:"secret" yaml:"secret"`
@@ -45,16 +54,18 @@ type ServerConfig struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
 	} `json:"limiter" yaml:"limiter"`
-	Devmode      bool `json:"devmode" yaml:"devmode"`
-	HTTP3Enabled bool `json:"http3_enabled" yaml:"http3_enabled"`
+	Devmode                bool `json:"devmode" yaml:"devmode"`
+	HTTP3Enabled           bool `json:"http3_enabled" yaml:"http3_enabled"`
+	CertAutoControlEnabled bool `json:"cert_ctrl_enabled" yaml:"cert_ctrl_enabled"`
 }
 
 type Config struct {
-	Server   ServerConfig   `json:"server" yaml:"server"`
-	Database DatabaseConfig `json:"database" yaml:"database"`
-	TLS      TLSConfig      `json:"tls" yaml:"tls"`
-	Auth     AuthConfig     `json:"auth" yaml:"auth"`
-	Site     SiteConfig     `json:"site" yaml:"site"`
+	Server      ServerConfig             `json:"server" yaml:"server"`
+	Database    DatabaseConfig           `json:"database" yaml:"database"`
+	TLS         TLSConfig                `json:"tls" yaml:"tls"`
+	CertControl TLSCertAutoControlConfig `json:"cert_control" yaml:"cert_control"`
+	Auth        AuthConfig               `json:"auth" yaml:"auth"`
+	Site        SiteConfig               `json:"site" yaml:"site"`
 }
 
 var Cfg *Config = &Config{}
