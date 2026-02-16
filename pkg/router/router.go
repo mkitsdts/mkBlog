@@ -42,7 +42,9 @@ func InitRouter() error {
 	r = gin.New()
 	r.Use(gin.Logger(), gin.Recovery(), CORSMiddleware())
 	// 启用黑名单
-	r.Use(middleware.Blacklist())
+	if !config.Cfg.Server.Devmode {
+		r.Use(middleware.Blacklist())
+	}
 
 	// 1 暴露图片目录为 /article（支持无后缀访问，自动追加 .webp）
 	imgRoot := config.Cfg.Server.ImageSavePath
