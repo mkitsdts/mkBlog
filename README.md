@@ -22,14 +22,16 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 
 编写博客时，如果有带图片，路径不需要填写后缀，如果填写后缀需要填写 webp ，因为后端接收图片时会将图片转换成 webp 格式。
 
-目前上传文件的方案是通过 vscode 插件作为一个后台管理，通过填写地址实现对博客的增删改。[插件](plugin) 可以自行编译或者选择发行版的插件。
+## 管理工具
+
+目前上传文件的方案是通过插件作为后台管理，填写地址实现对博客的增删改。已经存在的插件有 obsidian平台 和 vscode平台 [插件](plugin) 可以自行编译或者选择发行版的插件。
 
 ## 技术栈
 
 - **Go 1.24** - 主要编程语言
 - **Gin** - Web 框架
 - **GORM** - ORM 框架
-- **MySQL 或 Postgres** - 数据库
+- **MySQL 或 Postgres 或 sqlite3** - 数据库
 
 ## 功能特性
 
@@ -41,23 +43,26 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 - ✅ **图片支持** - 文章内图片展示
 - ✅ **文章评论** - 文章下评论及展示功能
 
-新增： vscode 插件管理博客，在 plugin 文件夹下，目前实现了文章及图片的创建，删除，以及 md 文件的标签解析，但文章检查，排版等都还不完善，所以暂时不上架。后续的计划是在 vscode 端通过插件的形式实现博客后端管理，包括文章图片的创建，上传，删除，再做一定的格式检查。
+便利功能： 
 
-添加布隆过滤器，限流器，并加入黑名单模式。
+- 布隆过滤器
+- 限流器
+- 黑名单模式
+- 自动 TLS 证书管理
 
 ## 快速开始
 
 ### 环境要求
 - Go 1.24+
-- MySQL 8.0+ （需要 ngram 分词器） 或 Postgres 18.0+ （需要 zhparser 插件）
+- （可选） MySQL 8.0+ （需要 ngram 分词器） 或 Postgres 18.0+ （需要 zhparser 插件）
+
+支持 sqlite3 ，意味着不需要额外组件，直接就能启动运行。
 
 ### 真机部署
 
 1. **配置数据库**
-   ```bash
-   # 创建数据库
-   CREATE DATABASE mkblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
+   
+自行解决，默认使用 sqlite3 。不需要额外安装数据库
 
 2. **配置文件**
    
@@ -74,7 +79,7 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 ### Docker 部署
 
 **数据库 Docker 部署：**
-如果使用 docker 部署需要注意写入环境变量
+
 ```bash
 cd docker
 docker-compose up -d
@@ -86,4 +91,4 @@ docker-compose up -d
 
 建议使用 Let's Encrypt ，可以自动续费，一劳永逸。
 
-如果需要配置 TLS 证书，可以在 config.yaml 里 tls 配置项的 enabled 选项打开，然后把 TLS 证书拷贝到 static 文件夹下
+如果需要配置 TLS 证书，可以在 config.yaml 里 tls 配置项的 enabled 选项打开，然后配置好自动管理 tls 证书。
