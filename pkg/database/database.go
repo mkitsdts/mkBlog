@@ -40,6 +40,7 @@ func Init() error {
 			break
 		}
 		time.Sleep(time.Duration(i<<2) * time.Microsecond) // 指数退避
+		slog.Warn("failed to connect database", "dsn", dsn)
 		if i == retryTimes-1 {
 			return err
 		}
