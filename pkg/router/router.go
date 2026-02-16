@@ -4,6 +4,7 @@ import (
 	"mkBlog/config"
 	"mkBlog/pkg/cache"
 	"mkBlog/pkg/middleware"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +18,29 @@ func GetRouter() *gin.Engine {
 	return r
 }
 
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 如果你只想允许自己域名，把 * 换成具体域名
+		// 例如：https://mkitsdts.top
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+
+		// 处理预检请求，直接返回 200
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func InitRouter() error {
 	gin.SetMode(gin.ReleaseMode)
 	r = gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(gin.Logger(), gin.Recovery(), CORSMiddleware())
 	// 启用黑名单
 	r.Use(middleware.Blacklist())
 
