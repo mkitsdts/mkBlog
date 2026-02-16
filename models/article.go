@@ -14,5 +14,5 @@ type ArticleDetail struct {
 	CreateAt *time.Time `json:"createAt" gorm:"autoCreateTime;"`
 	UpdateAt *time.Time `json:"updateAt" gorm:"autoUpdateTime;"`
 	Author   string     `json:"author"`
-	Content  string     `json:"content" gorm:"type:TEXT;index:ft_content"`
+	Content  string     `json:"content" gorm:"type:TEXT;index:ft_content,fulltext"`
 }
