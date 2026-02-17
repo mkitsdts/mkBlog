@@ -6,6 +6,7 @@
 /static/server.crt
 /plugin/*.vsix
 /.vscode/
+/data/
 /config.yaml
 /mkblog.pid
 /nohup.out

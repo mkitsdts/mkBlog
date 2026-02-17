@@ -83,6 +83,7 @@ func (s *BlogService) Start() {
 		}()
 	}
 	if config.Cfg.CertControl.Enabled {
+		tlscert.Init()
 		go tlscert.Start()
 	}
 	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突

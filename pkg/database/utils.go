@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mkBlog/config"
+	"mkBlog/models"
 	"strings"
 	"time"
 
@@ -29,7 +30,7 @@ func getDSN() string {
 	case "sqlite3":
 		return config.Cfg.Database.Host
 	}
-	return ""
+	return models.Default_Data_File_Path
 }
 
 func openDatabase(dsn string) (*gorm.DB, error) {

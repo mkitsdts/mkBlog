@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"mkBlog/models"
 	"os"
 
 	"go.yaml.in/yaml/v3"
@@ -72,106 +73,21 @@ var Cfg *Config = &Config{}
 
 func Init() {
 	// Fallback to config.yaml file if exists
-	file, err := os.Open("config.yaml")
+	file, err := os.Open(models.Default_Config_File_Path)
 	if err != nil {
-		slog.Warn("config.yaml not found, using environment variables or defaults")
-	} else {
-		defer file.Close()
-		if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
-			slog.Warn("Failed to decode config.yaml, using environment variables or defaults")
+		slog.Warn("config file not found, writing default config.yaml")
+		if err = writeImpl(); err != nil {
+			slog.Error("Failed to write impl config file.", " Please check program's permission ", err)
 		}
-		slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
-		return // Loaded from file, skip env vars
-	}
-	if host := os.Getenv("DB_HOST"); host != "" {
-		Cfg.Database.Host = host
-	} else {
-		Cfg.Database.Host = "localhost"
-		slog.Warn("DB host not set, defaulting to localhost")
-	}
-
-	if kind := os.Getenv("DB_KIND"); kind != "" {
-		Cfg.Database.Kind = kind
-	} else {
-		Cfg.Database.Kind = "mysql"
-		slog.Warn("DB kind not set, defaulting to mysql")
-	}
-
-	if port := os.Getenv("DB_PORT"); port != "" {
-		Cfg.Database.Port = port
-	} else {
-		switch Cfg.Database.Kind {
-		case "postgres":
-			Cfg.Database.Port = "5432"
-			slog.Warn("DB port not set, defaulting to 5432 for postgres")
+		if file, err = os.Open(models.Default_Config_File_Path); err != nil {
+			slog.Error("Failed to open file.", " Unknown error: ", err)
+			useDefaultConfig()
 			return
-		case "mysql":
-			Cfg.Database.Port = "3306"
-			slog.Warn("DB port not set, defaulting to 3306 for mysql")
-			return
-		default:
-			Cfg.Database.Port = "3306"
-			slog.Warn("DB port not set, defaulting to 3306")
 		}
 	}
-
-	if user := os.Getenv("DB_USER"); user != "" {
-		Cfg.Database.User = user
-	} else {
-		Cfg.Database.User = "root"
-		slog.Warn("DB user not set, defaulting to root")
+	if err := yaml.NewDecoder(file).Decode(Cfg); err != nil {
+		slog.Warn("Failed to decode config.yaml")
+		return
 	}
-
-	if password := os.Getenv("DB_PASSWORD"); password != "" {
-		Cfg.Database.Password = password
-	} else {
-		Cfg.Database.Password = "root"
-		slog.Warn("DB password not set, defaulting to root")
-	}
-
-	if name := os.Getenv("DB_NAME"); name != "" {
-		Cfg.Database.Name = name
-	} else {
-		Cfg.Database.Name = "mkblog"
-		slog.Warn("DB name not set, defaulting to mkblog")
-	}
-
-	if auth := os.Getenv("AUTH_ENABLE"); auth != "" {
-		Cfg.Auth.Enabled = auth == "true" || auth == "1"
-	}
-
-	if Cfg.Auth.Enabled {
-		if secret := os.Getenv("AUTH_SECRET"); secret != "" {
-			Cfg.Auth.Secret = secret
-		} else {
-			Cfg.Auth.Secret = ""
-			slog.Warn("Auth secret not set, using default (insecure)")
-		}
-	}
-
-	if tls := os.Getenv("TLS_ENABLE"); tls != "" {
-		Cfg.TLS.Enabled = tls == "true" || tls == "1"
-	}
-
-	if !Cfg.TLS.Enabled {
-		slog.Info("loaded configuration successfully", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
-		slog.Warn("TLS is disabled, consider enabling it in production environments")
-	}
-
-	if cert := os.Getenv("TLS_CERT"); cert != "" {
-		Cfg.TLS.Cert = cert
-	} else {
-		Cfg.TLS.Cert = "localhost.crt"
-		slog.Warn("TLS cert not set, defaulting to localhost.crt")
-	}
-
-	if key := os.Getenv("TLS_KEY"); key != "" {
-		Cfg.TLS.Key = key
-	} else {
-		Cfg.TLS.Key = "localhost.key"
-		slog.Warn("TLS key not set, defaulting to localhost.key")
-	}
-
-	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled)
-
+	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 }
