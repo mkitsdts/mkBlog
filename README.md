@@ -80,10 +80,21 @@ mkBlog 是一个轻量级的个人博客系统，支持 Markdown 文章、文章
 
 **数据库 Docker 部署：**
 
+自行解决 MySQL 和 Postgres 的需求。默认采用的 SQLite3 不需要额外部署数据库。
+
 ```bash
-cd docker
-docker-compose up -d
+# 自动拉取，注意配置网络
+docker pull mkitsdts/mkblog:latest
+docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkitsdts/mkblog:latest
 ```
+
+```bash
+# 手动构建（比较耗时，建议优先用上面）
+docker build -f docker/Dockerfile -t mkblog:latest . 
+docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkblog:latest
+```
+
+通过docker部署后，配置文件会被写入到 /etc/mkblog目录下。
 
 ## 访问地址
 
