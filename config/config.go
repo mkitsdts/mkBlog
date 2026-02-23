@@ -78,6 +78,8 @@ func Init() {
 		slog.Warn("config file not found, writing default config.yaml")
 		if err = writeImpl(); err != nil {
 			slog.Error("Failed to write impl config file.", " Please check program's permission ", err)
+			useDefaultConfig()
+			return
 		}
 		if file, err = os.Open(models.Default_Config_File_Path); err != nil {
 			slog.Error("Failed to open file.", " Unknown error: ", err)
