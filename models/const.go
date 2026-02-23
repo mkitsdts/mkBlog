@@ -12,6 +12,7 @@ const (
 )
 
 const (
+	Default_Data_Path        = "data"
 	Default_Log_File_Path    = "data/app.log"
 	Default_Image_Save_Path  = "data/images"
 	Default_Config_File_Path = "data/config.yaml"
