@@ -8,9 +8,9 @@ database:
   kind: sqlite3       # 数据库类型，支持mysql和postgres以及sqlite3
 
 tls:
-  enabled: false              # 是否启用TLS
-  cert: static/server.crt   # TLS证书文件路径
-  key: static/server.key    # TLS密钥文件路径
+  enabled: false     # 是否启用TLS
+  cert: server.crt   # TLS证书文件路径
+  key: server.key    # TLS密钥文件路径
 
 cert_control:
   email: 114514@colima.com      # 注册 Let's Encrypt 账号的邮箱
