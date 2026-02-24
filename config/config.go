@@ -1,12 +1,10 @@
 package config
 
 import (
-	"fmt"
 	"log/slog"
 	"mkBlog/models"
 	"os"
 	"path"
-	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -95,10 +93,13 @@ func Init() {
 		return
 	}
 
-	if !strings.Contains(Cfg.Site.Server, ":") {
-		Cfg.Site.Server = fmt.Sprintf("%s:%d", Cfg.Site.Server, Cfg.Server.Port)
+	if Cfg.Site.Server != "" {
+		if normalized, err := normalizeServerURL(Cfg.Site.Server, Cfg.TLS.Enabled, Cfg.Server.Port); err != nil {
+			slog.Warn("invalid site.server, using raw value", "server", Cfg.Site.Server, "error", err)
+		} else {
+			Cfg.Site.Server = normalized
+		}
 	}
-
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
 	if Cfg.TLS.Enabled {

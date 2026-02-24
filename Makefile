@@ -22,7 +22,7 @@ copy:
 
 run:
 	@echo "Starting mkBlog..."
-	./mkBlog & 1 & echo $$! > mkblog.pid
+	nohup ./mkBlog & & 1 & echo $$! > mkblog.pid
 	@echo "mkBlog started, pid saved to mkblog.pid"
 
 stop:
