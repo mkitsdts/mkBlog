@@ -1,9 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"mkBlog/models"
 	"os"
+	"path"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -73,7 +75,9 @@ var Cfg *Config = &Config{}
 
 func Init() {
 	// Fallback to config.yaml file if exists
-	file, err := os.Open(models.Default_Config_File_Path)
+	configPath := path.Join(models.Default_Data_Path, models.Default_Config_File_Path)
+	fmt.Println("Config Path ", configPath)
+	file, err := os.Open(configPath)
 	if err != nil {
 		slog.Warn("config file not found, writing default config.yaml")
 		if err = writeImpl(); err != nil {
@@ -81,7 +85,7 @@ func Init() {
 			useDefaultConfig()
 			return
 		}
-		if file, err = os.Open(models.Default_Config_File_Path); err != nil {
+		if file, err = os.Open(configPath); err != nil {
 			slog.Error("Failed to open file.", " Unknown error: ", err)
 			useDefaultConfig()
 			return
@@ -91,5 +95,9 @@ func Init() {
 		slog.Warn("Failed to decode config.yaml")
 		return
 	}
+
+	Cfg.Site.Server = fmt.Sprintf("http://localhost:%d", Cfg.Server.Port)
+	Cfg.Site.DevMode = Cfg.Server.Devmode
+
 	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 }
