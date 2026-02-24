@@ -99,7 +99,7 @@ func Init() {
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
 	if Cfg.TLS.Enabled {
-		Cfg.TLS.Cert = path.Join(path.Join(models.Default_Data_Path, Cfg.TLS.Cert))
+		Cfg.TLS.Cert = path.Join(models.Default_Data_Path, Cfg.TLS.Cert)
 		Cfg.TLS.Key = path.Join(models.Default_Data_Path, Cfg.TLS.Key)
 	}
 
