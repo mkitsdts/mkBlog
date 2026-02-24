@@ -76,7 +76,6 @@ var Cfg *Config = &Config{}
 func Init() {
 	// Fallback to config.yaml file if exists
 	configPath := path.Join(models.Default_Data_Path, models.Default_Config_File_Path)
-	fmt.Println("Config Path ", configPath)
 	file, err := os.Open(configPath)
 	if err != nil {
 		slog.Warn("config file not found, writing default config.yaml")
@@ -98,6 +97,11 @@ func Init() {
 
 	Cfg.Site.Server = fmt.Sprintf("http://localhost:%d", Cfg.Server.Port)
 	Cfg.Site.DevMode = Cfg.Server.Devmode
+
+	if Cfg.TLS.Enabled {
+		Cfg.TLS.Cert = path.Join(path.Join(models.Default_Data_Path, Cfg.TLS.Cert))
+		Cfg.TLS.Key = path.Join(models.Default_Data_Path, Cfg.TLS.Key)
+	}
 
 	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 }

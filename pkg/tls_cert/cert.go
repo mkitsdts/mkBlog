@@ -4,8 +4,6 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"mkBlog/config"
-	"mkBlog/models"
-	"path"
 	"sync"
 )
 
@@ -13,7 +11,7 @@ var currentCert *tls.Certificate
 var certMux sync.RWMutex
 
 func LoadCert() {
-	newCert, err := tls.LoadX509KeyPair(path.Join(models.Default_Data_Path, config.Cfg.TLS.Cert), path.Join(models.Default_Data_Path, config.Cfg.TLS.Key))
+	newCert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
 	if err != nil {
 		slog.Error("Failed to load X509 certfile.", " check error: ", err)
 	}
