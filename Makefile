@@ -21,8 +21,8 @@ copy:
 	find "$$DIST" -type f \( -name '*.css' -o -name '*.js' \) -exec cp {} static/assets/ \;
 
 run:
-	@echo "Starting mkBlog with nohup..."
-	nohup ./mkBlog > nohup.out 2>&1 & echo $$! > mkblog.pid
+	@echo "Starting mkBlog..."
+	./mkBlog & 1 & echo $$! > mkblog.pid
 	@echo "mkBlog started, pid saved to mkblog.pid"
 
 stop:

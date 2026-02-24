@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"mkBlog/config"
 	"mkBlog/models"
 	"mkBlog/pkg/bloom"
@@ -10,24 +11,31 @@ import (
 	"mkBlog/pkg/router"
 	"mkBlog/service"
 	"os"
-	"path/filepath"
 )
 
-func Init() {
-	dir := filepath.Dir(models.Default_Config_File_Path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+func Init(debugflag *bool) {
+	if err := os.MkdirAll(models.Default_Data_Path, 0755); err != nil {
 		return
 	}
-	log.Init()
+	if debugflag != nil {
+		log.Init(*debugflag)
+	} else {
+		log.Init(false)
+	}
+
 	config.Init()
 
 	bloom.Init()
-	cache.Init("./static")
+	cache.Init(models.Default_Static_File_Path)
 	middleware.Init()
 }
 
 func main() {
-	Init()
+	debug := flag.Bool("debug", false, "启用调试模式")
+
+	// 解析命令行参数
+	flag.Parse()
+	Init(debug)
 
 	if err := router.InitRouter(); err != nil {
 		panic("failed to create router: " + err.Error())

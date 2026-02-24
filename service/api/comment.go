@@ -12,18 +12,21 @@ import (
 )
 
 var comment_count map[string]int
-var mtx sync.Mutex
+var mtx sync.RWMutex
 
 func GetCommentCount(title string) int {
+	mtx.RLock()
 	if count, ok := comment_count[title]; ok {
 		return count
 	}
+	mtx.RUnlock()
 	return 0
 }
 
 type Comment struct {
 	CommentUser string `json:"comment_user"`
 	CommentTo   int    `json:"comment_to"`
+	CommentRoot int    `json:"comment_root"`
 	Title       string `json:"title"`
 	Content     string `json:"content"`
 }
@@ -47,6 +50,7 @@ func AddComment(c *gin.Context) {
 			CommentUser: comment.CommentUser,
 			CommentTo:   comment.CommentTo,
 			Title:       comment.Title,
+			CommentRoot: comment.CommentRoot,
 			Order:       comment_count[comment.Title],
 		}); result.Error == nil {
 			break
