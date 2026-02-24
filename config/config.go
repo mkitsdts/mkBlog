@@ -6,6 +6,7 @@ import (
 	"mkBlog/models"
 	"os"
 	"path"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -94,7 +95,10 @@ func Init() {
 		return
 	}
 
-	Cfg.Site.Server = fmt.Sprintf("http://localhost:%d", Cfg.Server.Port)
+	if !strings.Contains(Cfg.Site.Server, ":") {
+		Cfg.Site.Server = fmt.Sprintf("%s:%d", Cfg.Site.Server, Cfg.Server.Port)
+	}
+
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
 	if Cfg.TLS.Enabled {
