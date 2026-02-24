@@ -5,7 +5,7 @@ import "time"
 type ArticleSummary struct {
 	Title    string     `json:"title" gorm:"primaryKey"`
 	UpdateAt *time.Time `json:"updateAt" gorm:"autoUpdateTime;"`
-	Category string     `json:"category" gorm:"type:VARCHAR(100)"`
+	Category string     `json:"category" gorm:"type:VARCHAR(255)"`
 	Summary  string     `json:"summary" gorm:"type:TEXT"`
 }
 

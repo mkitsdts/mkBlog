@@ -57,9 +57,8 @@ type ServerConfig struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
 	} `json:"limiter" yaml:"limiter"`
-	Devmode                bool `json:"devmode" yaml:"devmode"`
-	HTTP3Enabled           bool `json:"http3_enabled" yaml:"http3_enabled"`
-	CertAutoControlEnabled bool `json:"cert_ctrl_enabled" yaml:"cert_ctrl_enabled"`
+	Devmode      bool `json:"devmode" yaml:"devmode"`
+	HTTP3Enabled bool `json:"http3_enabled" yaml:"http3_enabled"`
 }
 
 type Config struct {
