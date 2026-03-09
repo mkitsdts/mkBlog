@@ -43,7 +43,7 @@ backend-build:
 
 frontend-build:
 	@echo "Installing frontend dependencies and building..."
-	cd "$(FRONTEND_DIR)" && npm ci && npm run build
+	cd "$(FRONTEND_DIR)" && npm install && npm run build
 
 sync-static:
 	@echo "Syncing frontend assets to static/..."
