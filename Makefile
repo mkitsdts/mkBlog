@@ -48,12 +48,9 @@ frontend-build:
 sync-static:
 	@echo "Syncing frontend assets to static/..."
 	@test -d "$(FRONTEND_DIST)" || (echo "Missing frontend build output at $(FRONTEND_DIST). Run 'make frontend-build' first." && exit 1)
-	@mkdir -p "$(STATIC_DIR)" "$(STATIC_ASSETS_DIR)"
-	@rm -f "$(STATIC_DIR)/index.html"
-	@rm -rf "$(STATIC_ASSETS_DIR)"
-	@mkdir -p "$(STATIC_ASSETS_DIR)"
-	cp "$(FRONTEND_DIST)/index.html" "$(STATIC_DIR)/index.html"
-	cp -R "$(FRONTEND_DIST)/assets/." "$(STATIC_ASSETS_DIR)/"
+	@mkdir -p "$(STATIC_DIR)"
+	@find "$(STATIC_DIR)" -mindepth 1 -maxdepth 1 ! -name 'icon.svg' -exec rm -rf {} +
+	cp -R "$(FRONTEND_DIST)/." "$(STATIC_DIR)/"
 
 release-build: backend-build frontend-build sync-static
 	@echo "Release build completed."
@@ -86,6 +83,7 @@ else ifeq ($(OS),Darwin)
 		-e 's|__STDERR_PATH__|$(DATA_DIR)/launchd.stderr.log|g' \
 		"$(ROOT_DIR)/deploy/launchd/com.mkblog.app.plist.tpl" > "$(BUILD_DIR)/$(LAUNCHD_LABEL).plist"
 	cp "$(BUILD_DIR)/$(LAUNCHD_LABEL).plist" "$(LAUNCHD_PLIST_PATH)"
+	launchctl enable "gui/$$(id -u)/$(LAUNCHD_LABEL)" >/dev/null 2>&1 || true
 	launchctl bootout "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
 	launchctl bootstrap "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)"
 else
@@ -97,6 +95,7 @@ ifeq ($(OS),Linux)
 	sudo systemctl start "$(SERVICE_NAME)"
 	sudo systemctl status "$(SERVICE_NAME)" --no-pager || true
 else ifeq ($(OS),Darwin)
+	launchctl enable "gui/$$(id -u)/$(LAUNCHD_LABEL)" >/dev/null 2>&1 || true
 	launchctl bootstrap "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
 	launchctl kickstart -k "gui/$$(id -u)/$(LAUNCHD_LABEL)"
 	launchctl print "gui/$$(id -u)/$(LAUNCHD_LABEL)" || true
@@ -108,7 +107,8 @@ release-stop:
 ifeq ($(OS),Linux)
 	sudo systemctl stop "$(SERVICE_NAME)"
 else ifeq ($(OS),Darwin)
-	launchctl bootout "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || launchctl unload "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
+	launchctl disable "gui/$$(id -u)/$(LAUNCHD_LABEL)" >/dev/null 2>&1 || true
+	launchctl bootout "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
 else
 	@echo "Unsupported OS: $(OS)" && exit 1
 endif
@@ -118,6 +118,7 @@ ifeq ($(OS),Linux)
 	sudo systemctl restart "$(SERVICE_NAME)"
 	sudo systemctl status "$(SERVICE_NAME)" --no-pager || true
 else ifeq ($(OS),Darwin)
+	launchctl enable "gui/$$(id -u)/$(LAUNCHD_LABEL)" >/dev/null 2>&1 || true
 	launchctl bootout "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
 	launchctl bootstrap "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)"
 	launchctl kickstart -k "gui/$$(id -u)/$(LAUNCHD_LABEL)"
@@ -133,6 +134,7 @@ ifeq ($(OS),Linux)
 	-sudo rm -f "$(SYSTEMD_SERVICE_PATH)"
 	sudo systemctl daemon-reload
 else ifeq ($(OS),Darwin)
+	-launchctl disable "gui/$$(id -u)/$(LAUNCHD_LABEL)" >/dev/null 2>&1 || true
 	-launchctl bootout "gui/$$(id -u)" "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || launchctl unload "$(LAUNCHD_PLIST_PATH)" >/dev/null 2>&1 || true
 	-rm -f "$(LAUNCHD_PLIST_PATH)"
 else

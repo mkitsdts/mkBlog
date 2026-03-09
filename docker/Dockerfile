@@ -1,4 +1,12 @@
-#
+FROM node:22-alpine AS frontend
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
 FROM golang:1.24-alpine AS backend
 WORKDIR /app
 
@@ -16,13 +24,12 @@ RUN CGO_ENABLED=1 \
     GOMAXPROCS=2 \
     go build -ldflags="-s -w" -o /app/main .
 
-#
 FROM alpine:3.22
 WORKDIR /app
 
 COPY --from=backend /app/main .
-
 COPY --from=backend /app/static ./static
+COPY --from=frontend /app/frontend/dist/. ./static/
 
 EXPOSE 4801 6060
 

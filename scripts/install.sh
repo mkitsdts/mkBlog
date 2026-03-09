@@ -24,6 +24,37 @@ need_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
 }
 
+version_ge() {
+  [ "$1" = "$2" ] && return 0
+  local first
+  first="$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)"
+  [ "$first" = "$2" ]
+}
+
+check_go_version() {
+  local raw version
+  raw="$(go version)"
+  version="$(printf '%s\n' "$raw" | sed -E 's/.* go([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')"
+  [ -n "$version" ] || fail "unable to parse Go version from: $raw"
+  version_ge "$version" "1.24.0" || fail "Go 1.24.0 or newer is required, found $version"
+}
+
+check_node_version() {
+  local raw version
+  raw="$(node -v)"
+  version="${raw#v}"
+  if version_ge "$version" "22.12.0"; then
+    return
+  fi
+  version_ge "$version" "20.19.0" || fail "Node.js 20.19.0+ or 22.12.0+ is required, found $version"
+}
+
+ensure_clean_worktree() {
+  local status
+  status="$(git -C "$INSTALL_DIR" status --porcelain)"
+  [ -z "$status" ] || fail "repository has uncommitted changes in $INSTALL_DIR; commit or stash them before update"
+}
+
 usage() {
   cat <<EOF
 Usage: $0 <command>
@@ -50,7 +81,10 @@ ensure_common_prerequisites() {
   need_cmd git
   need_cmd make
   need_cmd go
+  need_cmd node
   need_cmd npm
+  check_go_version
+  check_node_version
 
   case "$OS" in
     Linux)
@@ -67,7 +101,12 @@ ensure_common_prerequisites() {
 }
 
 ensure_repo_ready() {
+  local mode="${1:-install}"
+
   if [ -d "$INSTALL_DIR/.git" ]; then
+    if [ "$mode" = "update" ]; then
+      ensure_clean_worktree
+    fi
     log "Updating existing source in $INSTALL_DIR"
     git -C "$INSTALL_DIR" fetch --tags origin
     git -C "$INSTALL_DIR" checkout "$REPO_REF"
@@ -95,8 +134,9 @@ run_make() {
 }
 
 install_or_update() {
+  local mode="${1:-install}"
   ensure_common_prerequisites
-  ensure_repo_ready
+  ensure_repo_ready "$mode"
   log "Building and installing service"
   run_make release
 }
@@ -145,10 +185,10 @@ main() {
 
   case "$cmd" in
     install)
-      install_or_update
+      install_or_update install
       ;;
     update)
-      install_or_update
+      install_or_update update
       ;;
     start)
       start_service
