@@ -201,50 +201,6 @@ docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkblog:latest
 
 容器中的运行数据会保存在 `/app/data`。
 
-## 在线安装与更新
-
-如果你不想使用 Docker，可以直接通过安装脚本把 mkBlog 安装到本地并注册为系统服务。
-
-### 前置要求
-
-- Git
-- Go 1.24+
-- Node.js 20.19+ 或 22.12+
-- npm
-- make
-- Linux 下需要 `systemd`
-- macOS 下需要 `launchd`
-
-### 安装
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- install
-```
-
-### 更新
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- update
-```
-
-### 常用命令
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- start
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- stop
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- restart
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- status
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- uninstall
-```
-
-### 可选环境变量
-
-- `MKBLOG_INSTALL_DIR`: 安装目录，默认 `~/.local/share/mkblog`
-- `MKBLOG_REPO_URL`: 仓库地址
-- `MKBLOG_REPO_REF`: 分支或标签，默认 `main`
-- `MKBLOG_SERVICE_NAME`: Linux 下的 systemd 服务名，默认 `mkblog`
-- `MKBLOG_LAUNCHD_LABEL`: macOS 下的 launchd label，默认 `com.mkblog.app`
-
 ## CI/CD
 
 - `main` 分支更新时，只有代码相关目录、Docker 文件或 GitHub Actions 工作流发生变更，才会触发服务器部署

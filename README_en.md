@@ -201,50 +201,6 @@ docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkblog:latest
 
 Runtime data inside the container is stored in `/app/data`.
 
-## Online Install and Update
-
-If you do not want to use Docker, you can install mkBlog locally and register it as a system service with the install script.
-
-### Requirements
-
-- Git
-- Go 1.24+
-- Node.js 20.19+ or 22.12+
-- npm
-- make
-- `systemd` on Linux
-- `launchd` on macOS
-
-### Install
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- install
-```
-
-### Update
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- update
-```
-
-### Common Commands
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- start
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- stop
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- restart
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- status
-curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- uninstall
-```
-
-### Optional Environment Variables
-
-- `MKBLOG_INSTALL_DIR`: install directory, default `~/.local/share/mkblog`
-- `MKBLOG_REPO_URL`: repository URL
-- `MKBLOG_REPO_REF`: branch or tag, default `main`
-- `MKBLOG_SERVICE_NAME`: systemd service name on Linux, default `mkblog`
-- `MKBLOG_LAUNCHD_LABEL`: launchd label on macOS, default `com.mkblog.app`
-
 ## CI/CD
 
 - Deployments from `main` only run when code-related directories, Docker files, or GitHub Actions workflows change
