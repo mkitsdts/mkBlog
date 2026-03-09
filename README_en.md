@@ -2,90 +2,263 @@
 
 # mkBlog
 
-A minimalist personal blog system written in Go, focused on content creation and technical notes, with one-click deployment for both frontend and backend.
+mkBlog is a minimalist personal blog system built with Go, Gin, GORM, Vue 3, and Vite. It serves both frontend and backend from one deployment target, uses SQLite by default, and also supports MySQL and PostgreSQL. VS Code and Obsidian uploader plugins are included for a Markdown-first workflow.
 
 [Preview](https://mkitsdts.top:8080)
 
 ![Home](./docs/images/home.png)
-
 ![Article](./docs/images/article.png)
-
 ![ApplyFriend](./docs/images/apply_friend.png)
-
-## Project Overview
-
-mkBlog is a lightweight personal blog system that supports Markdown articles and article categories. The system is designed to be simple, easy to deploy, and easy to maintain.
-
-## Usage
-
-You can change the avatar, signature, and personal introduction in the configuration file [config.yaml] by editing the corresponding values under site.
-
-When writing posts with images, you don't need to include the image file extension in the path. If you do include an extension, please use webp, because the backend converts uploaded images to webp format.
-
-Currently, file uploads are handled via a VS Code extension that acts as a simple admin backend. By configuring the extension with the correct address you can create, update, and delete blog content. The extension is in the plugin folder and can be built by yourself or you can use the distributed version.
-
-## Technology Stack
-
-- Go 1.24 — primary programming language  
-- Gin — web framework  
-- GORM — ORM  
-- MySQL — database
 
 ## Features
 
-- ✅ Article management — create, edit, and display Markdown articles  
-- ✅ Article categories — organize content by category  
-- ✅ Article search — keyword search for articles  
-- ✅ Pagination — paginated article lists  
-- ✅ Friend links — display and request friend links  
-- ✅ Image support — display images inside articles  
-- ✅ Article comments — comment and display comments under articles
+- Create, update, and delete Markdown articles
+- Category filtering and pagination
+- Article search
+- Switchable comments
+- Friend links and friend link applications
+- Image upload with automatic WebP conversion
+- Bearer Token protection for write APIs
+- Rate limiting, blacklist mode, and Bloom filter
+- TLS / HTTP3 / automatic certificate control
+- VS Code / Obsidian uploader workflow
 
-New: A VS Code plugin for blog management is included in the plugin folder. It currently supports creating and deleting articles and images, and parsing tags from MD files. Article checking and formatting are not yet complete, so the extension is not published. Future plans include a more complete backend management experience in VS Code (create/upload/delete images and articles, and some format checks).
+## Tech Stack
 
-A Bloom filter, rate limiter, and blacklist mode have been added.
+### Backend
+
+- Go 1.24
+- Gin
+- GORM
+- SQLite / MySQL / PostgreSQL
+
+### Frontend
+
+- Vue 3
+- Vite
+- Element Plus
+- Axios
+- markdown-it
+- highlight.js
+
+## Project Layout
+
+```text
+.
+├── main.go
+├── service/
+├── pkg/
+├── frontend/
+├── plugin/vscode/
+├── plugin/obsidian/
+├── static/
+├── docker/
+└── data/
+```
+
+## Runtime Behavior
+
+- The server reads runtime config from `./data/config.yaml`
+- If the file does not exist, a default config is generated automatically
+- Frontend build assets are served by the Go backend
+- Images are stored under `./data/static/images`
+- An empty database is initialized with a default `Hello World` article
 
 ## Quick Start
 
 ### Requirements
-- Go 1.24+  
-- MySQL 8.0+ (ngram tokenizer required)
 
-### Deploy on a real machine
+- Go 1.24+
+- Node.js 20.19+ or 22.12+ for frontend or plugin builds
+- SQLite for the simplest setup
+- MySQL with ngram parser for better full-text search
+- PostgreSQL with zhparser for Chinese full-text search
 
-1. Configure the database:
-   ```sql
-   -- Create database
-   CREATE DATABASE mkblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-
-2. Configuration file
-
-   Edit `config.yaml`. See comments in [config.yaml] for details.
-
-3. Start the service
-
-The simplest way is to use the Makefile:
+### 1. Build and run the backend
 
 ```bash
-make all
+go build -o mkBlog .
+./mkBlog
 ```
 
-You can also use GitHub Actions for automated deployment (requires setting secrets in GitHub), or build a binary with `go build` and deploy the executable.
+On first start, mkBlog creates:
 
-### Docker Deployment
+```text
+./data/config.yaml
+./data/app.db
+```
 
-**Database Docker deployment:**  
-If using Docker, ensure environment variables are set correctly:
-Set EV in docker-compose.yaml
+### 2. Edit configuration
+
+Update `./data/config.yaml` and review these fields:
+
+- `database.kind`: `sqlite3` / `mysql` / `postgres`
+- `database.host`: file name for SQLite, host address for MySQL / PostgreSQL
+- `server.port`
+- `server.imageSavePath`
+- `server.devmode`
+- `server.http3_enabled`
+- `tls.enabled`
+- `auth.enabled`
+- `auth.secret`
+- `site.signature`
+- `site.about`
+- `site.avatarPath`
+- `site.server`
+- `site.comment_enabled`
+- `site.icp`
+
+### 3. Build the frontend
 
 ```bash
-cd docker
-docker-compose up -d
+cd frontend
+npm install
+npm run build
 ```
 
-## Access
+After building, copy the frontend output into the root `static/` directory so it can be served by the backend.
 
-Frontend and backend are served under the same address, so there are no CORS issues.
+### 4. Open the site
 
-If you need TLS, enable the TLS option in `config.yaml` and place the TLS certificates in the static folder.
+Default address:
+
+```text
+http://127.0.0.1:4801
+```
+
+If `site.server` is configured correctly, the frontend uses that value as the production API root.
+
+## Database Notes
+
+### SQLite
+
+- Default option
+- No extra database service required
+- Search falls back to LIKE queries
+
+### MySQL
+
+- Better suited for production deployments
+- Search uses FULLTEXT + ngram parser
+
+### PostgreSQL
+
+- Supported
+- Chinese search requires zhparser
+
+## API Overview
+
+### Public APIs
+
+- `GET /api/site`
+- `GET /api/articles`
+- `GET /api/allarticles`
+- `GET /api/article/:title`
+- `GET /api/search`
+- `GET /api/categories`
+- `GET /api/friends`
+- `POST /api/friends`
+- `GET /api/comments`
+- `POST /api/comments`
+
+### Admin APIs
+
+- `PUT /api/article/:title`
+- `PUT /api/image`
+- `DELETE /api/article/:title`
+- `POST /api/blockip`
+
+When `auth.enabled: true`, admin APIs require:
+
+```http
+Authorization: Bearer <your-token>
+```
+
+## Image and Markdown Conventions
+
+- Images are grouped by article title
+- Uploaded non-WebP images are converted to `.webp`
+- In article content, image paths can omit the extension
+- If an extension is written manually, use `.webp`
+- The plugins upload Markdown files together with images in same-name folders
+
+## Plugins
+
+### VS Code
+
+See [plugin/vscode/README.md](plugin/vscode/README.md)
+
+### Obsidian
+
+See [plugin/obsidian/README.md](plugin/obsidian/README.md)
+
+## Docker
+
+```bash
+docker build -f docker/Dockerfile -t mkblog:latest .
+docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkblog:latest
+```
+
+Runtime data inside the container is stored in `/app/data`.
+
+## Online Install and Update
+
+If you do not want to use Docker, you can install mkBlog locally and register it as a system service with the install script.
+
+### Requirements
+
+- Git
+- Go 1.24+
+- Node.js 20.19+ or 22.12+
+- npm
+- make
+- `systemd` on Linux
+- `launchd` on macOS
+
+### Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- install
+```
+
+### Update
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- update
+```
+
+### Common Commands
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- start
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- stop
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- restart
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- status
+curl -fsSL https://raw.githubusercontent.com/mkitsdts/mkBlog/main/scripts/install.sh | bash -s -- uninstall
+```
+
+### Optional Environment Variables
+
+- `MKBLOG_INSTALL_DIR`: install directory, default `~/.local/share/mkblog`
+- `MKBLOG_REPO_URL`: repository URL
+- `MKBLOG_REPO_REF`: branch or tag, default `main`
+- `MKBLOG_SERVICE_NAME`: systemd service name on Linux, default `mkblog`
+- `MKBLOG_LAUNCHD_LABEL`: launchd label on macOS, default `com.mkblog.app`
+
+## CI/CD
+
+- Deployments from `main` only run when code-related directories, Docker files, or GitHub Actions workflows change
+- The deploy workflow runs `make release` on the remote server
+- Publishing a GitHub Release automatically builds and pushes multi-architecture Docker images for `linux/amd64` and `linux/arm64`
+- Changes under `docker/**` or `.github/workflows/**` on `main` also trigger Docker image build and push
+
+## Notes
+
+- Frontend and backend are served from the same origin
+- Enable `tls.enabled` if you want HTTPS
+- Configure `cert_control` if you want automated certificate management
+- Both VS Code and Obsidian plugins can connect to a remote mkBlog instance through Base URL settings
+
+## License
+
+[MIT](LICENSE)
