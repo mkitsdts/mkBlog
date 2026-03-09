@@ -58,6 +58,7 @@ func InitRouter() error {
 			Signature      string `json:"signature"`
 			About          string `json:"about"`
 			AvatarPath     string `json:"avatarPath"`
+			BgPicturePath  string `json:"bgPicturePath"`
 			Server         string `json:"server"`
 			DevMode        bool   `json:"devmode"`
 			CommentEnabled bool   `json:"comment_enabled"`
@@ -66,6 +67,7 @@ func InitRouter() error {
 			Signature:      site.Signature,
 			About:          site.About,
 			AvatarPath:     site.AvatarPath,
+			BgPicturePath:  site.BgPicturePath,
 			Server:         site.Server,
 			DevMode:        site.DevMode,
 			CommentEnabled: site.CommentEnabled,
@@ -135,6 +137,10 @@ func InitRouter() error {
 	// 2) 其它静态资源
 	if cache.GetGlobalAssetCache() != nil {
 		r.GET("/assets/*any", cache.GetGlobalAssetCache().Handler())
+		r.GET("/static/*any", func(c *gin.Context) {
+			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/static")
+			cache.GetGlobalAssetCache().Handler()(c)
+		})
 		r.GET("/", cache.GetGlobalAssetCache().Handler())
 		r.GET("/index.html", cache.GetGlobalAssetCache().Handler())
 		r.GET("/icon.svg", cache.GetGlobalAssetCache().Handler())
@@ -148,6 +154,7 @@ func InitRouter() error {
 		})
 	} else {
 		r.Static("/assets", "./static/assets")
+		r.Static("/static", "./static")
 		r.StaticFile("/", "./static/index.html")
 		r.NoRoute(func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
