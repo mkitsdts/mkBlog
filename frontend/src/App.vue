@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" :style="appStyle">
     <el-menu :default-active="$route.path" class="el-menu-demo" mode="horizontal" router>
       <el-menu-item index="/">Home</el-menu-item>
       <el-menu-item index="/friends">Friends</el-menu-item>
@@ -13,20 +13,33 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { loadConfig } from '@/config'
+import { ref, onMounted, computed } from 'vue'
+import { imageExists, loadConfig, resolveSiteStaticAssetUrl } from '@/config'
 
 export default {
   name: 'App',
   setup() {
     const icp = ref('')
+    const bgUrl = ref('')
+
+    const appStyle = computed(() => {
+      if (!bgUrl.value) return {}
+      return {
+        backgroundImage: `url(${bgUrl.value})`
+      }
+    })
+
     onMounted(async () => {
       try {
         const conf = await loadConfig()
         icp.value = conf.icp || ''
-      } catch {}
+        const preferredBg = resolveSiteStaticAssetUrl(conf.bgPicturePath)
+        bgUrl.value = await imageExists(preferredBg) ? preferredBg : ''
+      } catch (e) {
+        console.error('Failed to load site config in App.vue', e)
+      }
     })
-    return { icp }
+    return { icp, appStyle }
   }
 }
 </script>
@@ -37,10 +50,10 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  background-image: url('https://source.unsplash.com/random/1920x1080');
   background-size: cover;
   background-attachment: fixed;
   min-height: 100vh;
+  transition: background-image 0.5s ease-in-out;
 }
 .el-menu-demo {
   background-color: rgba(255, 255, 255, 0.7) !important;
@@ -61,4 +74,3 @@ export default {
 }
 .icp-footer a:hover { text-decoration: underline; }
 </style>
-

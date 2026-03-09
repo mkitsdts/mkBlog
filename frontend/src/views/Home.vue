@@ -139,7 +139,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import api from '@/api';
-import { loadConfig } from '@/config';
+import { DEFAULT_AVATAR_URL, imageExists, loadConfig, resolveSiteStaticAssetUrl } from '@/config';
 import { Menu } from '@element-plus/icons-vue';
 
 export default {
@@ -313,9 +313,8 @@ export default {
       try {
         const conf = await loadConfig();
         signature.value = conf.signature || '鼠鼠很懒，什么都没有留下';
-        try {
-          avatarUrl.value = new URL(`../assets/${conf.avatarPath}`, import.meta.url).href;
-        } catch { avatarUrl.value = ''; }
+        const preferredAvatar = resolveSiteStaticAssetUrl(conf.avatarPath);
+        avatarUrl.value = await imageExists(preferredAvatar) ? preferredAvatar : DEFAULT_AVATAR_URL;
       } catch (e) { console.error('load config failed', e); }
       fetchCategories();
       fetchArticles(currentPage.value);

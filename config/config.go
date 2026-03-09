@@ -42,6 +42,7 @@ type SiteConfig struct {
 	Signature      string `json:"signature" yaml:"signature"`
 	About          string `json:"about" yaml:"about"`
 	AvatarPath     string `json:"avatarPath" yaml:"avatarPath"`
+	BgPicturePath  string `json:"bgPicturePath" yaml:"bgPicturePath"`
 	Server         string `json:"server" yaml:"server"`
 	DevMode        bool   `json:"devmode" yaml:"devmode"`
 	CommentEnabled bool   `json:"comment_enabled" yaml:"comment_enabled"`
