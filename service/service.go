@@ -31,7 +31,25 @@ func NewBlogService() (*BlogService, error) {
 	}
 
 	a := router.GetRouter().Group("/api")
-	{
+	if config.Cfg.Server.Devmode {
+		{
+			a.GET("/articles", api.GetArticleSummary)
+			a.GET("/allarticles", api.GetAllArticleSummaries)
+			a.GET("/article/:title", api.GetArticleDetail)
+			a.GET("/search", api.SearchArticle)
+			a.GET("/categories", api.GetCategories)
+			a.GET("/friends", api.GetFriendList)
+			a.POST("/friends", api.ApplyFriend)
+
+			a.GET("/comments", api.GetComments)
+			a.POST("/comments", api.AddComment)
+
+			a.PUT("/article/:title", api.UploadArticle)
+			a.PUT("/image", api.UploadImage)
+			a.DELETE("/article/:title", api.DeleteArticle)
+			a.POST("/blockip", api.BlackIP)
+		}
+	} else {
 		a.GET("/articles", api.GetArticleSummary, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 		a.GET("/allarticles", api.GetAllArticleSummaries, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
 		a.GET("/article/:title", api.GetArticleDetail, middleware.RateLimit(config.Cfg.Server.Limiter.Requests, config.Cfg.Server.Limiter.Duration))
