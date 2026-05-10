@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"mkBlog/pkg/router"
 	tlscert "mkBlog/pkg/tls_cert"
 	"mkBlog/service/api"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -76,17 +78,22 @@ func NewBlogService() (*BlogService, error) {
 	return &service, nil
 }
 
-func (s *BlogService) Start() {
+func (s *BlogService) Start() error {
 	if config.Cfg.Server.Devmode {
 		go func() {
 			log.Println(http.ListenAndServe(":6060", nil))
 		}()
 	}
+	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
 	if config.Cfg.Server.HTTP3Enabled {
 		tlscert.LoadCert()
+		conn, err := net.ListenPacket("udp", addr)
+		if err != nil {
+			return fmt.Errorf("start HTTP3 server: %w", err)
+		}
 		srv := http3.Server{
 			Handler: router.GetRouter(),
-			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
+			Addr:    addr,
 			TLSConfig: http3.ConfigureTLSConfig(&tls.Config{
 				MinVersion:     tls.VersionTLS13,
 				GetCertificate: tlscert.GetCurrentCert,
@@ -95,7 +102,7 @@ func (s *BlogService) Start() {
 		}
 		slog.Info("starting HTTP3 server", "port", config.Cfg.Server.Port)
 		go func() {
-			if err := srv.ListenAndServe(); err != nil {
+			if err := srv.Serve(conn); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				slog.Error("failed to start HTTP3 server", "error", err)
 			}
 		}()
@@ -108,7 +115,7 @@ func (s *BlogService) Start() {
 	if config.Cfg.TLS.Enabled {
 		tlscert.LoadCert()
 		srv := &http.Server{
-			Addr:    ":" + fmt.Sprint(config.Cfg.Server.Port),
+			Addr:    addr,
 			Handler: router.GetRouter(),
 			TLSConfig: &tls.Config{
 				MinVersion:     tls.VersionTLS12,
@@ -116,12 +123,15 @@ func (s *BlogService) Start() {
 			},
 		}
 		// Start HTTPS server
-		if err := srv.ListenAndServeTLS("", ""); err != nil {
+		if err := srv.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start HTTPS server", "error", err)
+			return fmt.Errorf("start HTTPS server: %w", err)
 		}
 	} else {
-		if err := router.GetRouter().Run(":" + fmt.Sprint(config.Cfg.Server.Port)); err != nil {
+		if err := router.GetRouter().Run(addr); err != nil {
 			slog.Error("failed to start HTTP server", "error", err)
+			return fmt.Errorf("start HTTP server: %w", err)
 		}
 	}
+	return nil
 }

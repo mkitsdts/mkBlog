@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
+	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
 	"mkBlog/pkg/bloom"
 	"mkBlog/pkg/cache"
-	"mkBlog/pkg/log"
+	applog "mkBlog/pkg/log"
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
 	"mkBlog/service"
@@ -18,9 +19,9 @@ func Init(debugflag *bool) {
 		return
 	}
 	if debugflag != nil {
-		log.Init(*debugflag)
+		applog.Init(*debugflag)
 	} else {
-		log.Init(false)
+		applog.Init(false)
 	}
 
 	config.Init()
@@ -41,8 +42,13 @@ func main() {
 		panic("failed to create router: " + err.Error())
 	}
 
-	if s, err := service.NewBlogService(); err == nil {
-		s.Start()
+	s, err := service.NewBlogService()
+	if err != nil {
+		slog.Error("failed to initialize blog service", "error", err)
+		os.Exit(1)
 	}
-
+	if err := s.Start(); err != nil {
+		slog.Error("blog service stopped", "error", err)
+		os.Exit(1)
+	}
 }
