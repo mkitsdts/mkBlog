@@ -2,7 +2,7 @@ package tlscert
 
 import (
 	"crypto/tls"
-	"log/slog"
+	"errors"
 	"mkBlog/config"
 	"sync"
 )
@@ -10,28 +10,33 @@ import (
 var currentCert *tls.Certificate
 var certMux sync.RWMutex
 
-func LoadCert() {
+func LoadCert() error {
 	newCert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
 	if err != nil {
-		slog.Error("Failed to load X509 certfile.", " check error: ", err)
+		return err
 	}
 	certMux.Lock()
-	defer certMux.Unlock()
 	currentCert = &newCert
+	certMux.Unlock()
+	return nil
 }
 
 func GetCurrentCert(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	certMux.RLock()
 	defer certMux.RUnlock()
+	if currentCert == nil {
+		return nil, errors.New("no certificate loaded")
+	}
 	return currentCert, nil
 }
 
-func updateCert() {
+func updateCert() error {
 	newCert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
 	if err != nil {
-		slog.Error("Failed to load X509 certfile.", " check error: ", err)
+		return err
 	}
 	certMux.Lock()
-	defer certMux.Unlock()
 	currentCert = &newCert
+	certMux.Unlock()
+	return nil
 }

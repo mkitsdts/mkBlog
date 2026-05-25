@@ -51,7 +51,7 @@ func i() {
 
 func TestCheckExpireDate(t *testing.T) {
 	i()
-	if checkExpireDate("./static/server.pem") {
+	if needRenew("./static/server.pem") {
 		fmt.Println("Need update")
 	} else {
 		fmt.Println("Don't need to update")

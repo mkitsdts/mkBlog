@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
@@ -43,11 +44,10 @@ var client *lego.Client
 var leuser MyUser
 var p challenge.Provider
 
-func Init() {
+func Init() error {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		slog.Error("GenerateKey failed", " : ", err)
-		return
+		return err
 	}
 	leuser = MyUser{
 		Email: config.Cfg.CertControl.Email,
@@ -57,7 +57,7 @@ func Init() {
 	newconfig.Certificate.KeyType = certcrypto.RSA2048
 	client, err = lego.NewClient(newconfig)
 	if err != nil {
-		slog.Error("Failed to create lego client", "err :", err)
+		return err
 	}
 	switch strings.ToLower(config.Cfg.CertControl.DomainProvider) {
 	case models.AliYun:
@@ -65,68 +65,73 @@ func Init() {
 		cfg.APIKey = config.Cfg.CertControl.Key
 		cfg.SecretKey = config.Cfg.CertControl.Secret
 		if p, err = alidns.NewDNSProviderConfig(cfg); err != nil {
-			slog.Error("Failed to create dns provider config", "err : ", err)
-			return
+			return err
 		}
 	case models.TencentCloud:
 		cfg := tencentcloud.NewDefaultConfig()
 		cfg.SecretID = config.Cfg.CertControl.Key
 		cfg.SecretKey = config.Cfg.CertControl.Secret
 		if p, err = tencentcloud.NewDNSProviderConfig(cfg); err != nil {
-			slog.Error("Failed to create dns provider config", "err : ", err)
-			return
+			return err
 		}
 	default:
-		slog.Warn("Not implement dns provider.")
-		return
+		return errors.New("unsupported domain provider: " + config.Cfg.CertControl.DomainProvider)
 	}
 	if err := client.Challenge.SetDNS01Provider(p); err != nil {
-		slog.Error("Failed to set dns to provider", "err : ", err)
-		return
+		return err
 	}
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
-		slog.Error("Failed to register ", "err : ", err)
+		return err
 	}
 	leuser.Registration = reg
+	return nil
 }
 
 func Start() {
 	for {
-		if checkExpireDate(config.Cfg.TLS.Cert) {
+		if needRenew(config.Cfg.TLS.Cert) {
 			if err := applyTLSCert(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
 				time.Sleep(30 * time.Minute)
 				continue
 			}
-			updateCert()
+			if err := updateCert(); err != nil {
+				slog.Error("Failed to reload renewed certificate", "err", err)
+			}
 		}
 		time.Sleep(12 * time.Hour)
 	}
 }
 
-func checkExpireDate(path string) bool {
+func needRenew(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		slog.Error("Failed to read cert file ", "err: ", err)
+		return true
 	}
 
 	block, _ := pem.Decode(data)
 	if block == nil || block.Type != "CERTIFICATE" {
 		slog.Error("invalied PEM cert")
+		return true
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		slog.Error("Failed to parse certficate ", "err: ", err)
+		return true
 	}
 
 	expiry := cert.NotAfter
 	remaining := time.Until(expiry)
 
-	return remaining.Abs() < 14*24*time.Hour
+	return remaining < 14*24*time.Hour
 }
 
 func applyTLSCert(keyPath, crtPath string) error {
+	if client == nil {
+		return errors.New("lego client is not initialized, call Init() first")
+	}
 	request := certificate.ObtainRequest{
 		Domains: []string{config.Cfg.CertControl.Domain},
 		Bundle:  true,
@@ -137,11 +142,11 @@ func applyTLSCert(keyPath, crtPath string) error {
 		return err
 	}
 
-	if err = os.WriteFile(keyPath, certificates.PrivateKey, os.ModePerm); err != nil {
+	if err = os.WriteFile(keyPath, certificates.PrivateKey, 0600); err != nil {
 		slog.Error("Failed to write private_key, ", "err: ", err)
 		return err
 	}
-	if err = os.WriteFile(crtPath, certificates.Certificate, os.ModePerm); err != nil {
+	if err = os.WriteFile(crtPath, certificates.Certificate, 0644); err != nil {
 		slog.Error("Failed to write cert, ", "err: ", err)
 		return err
 	}

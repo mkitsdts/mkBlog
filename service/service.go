@@ -86,7 +86,9 @@ func (s *BlogService) Start() error {
 	}
 	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
 	if config.Cfg.Server.HTTP3Enabled {
-		tlscert.LoadCert()
+		if err := tlscert.LoadCert(); err != nil {
+			return fmt.Errorf("load TLS cert: %w", err)
+		}
 		conn, err := net.ListenPacket("udp", addr)
 		if err != nil {
 			return fmt.Errorf("start HTTP3 server: %w", err)
@@ -108,12 +110,16 @@ func (s *BlogService) Start() error {
 		}()
 	}
 	if config.Cfg.CertControl.Enabled {
-		tlscert.Init()
+		if err := tlscert.Init(); err != nil {
+			return fmt.Errorf("init cert control: %w", err)
+		}
 		go tlscert.Start()
 	}
 	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
 	if config.Cfg.TLS.Enabled {
-		tlscert.LoadCert()
+		if err := tlscert.LoadCert(); err != nil {
+			return fmt.Errorf("load TLS cert: %w", err)
+		}
 		srv := &http.Server{
 			Addr:    addr,
 			Handler: router.GetRouter(),
