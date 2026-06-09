@@ -1,10 +1,10 @@
 package service
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/pkg/middleware"
@@ -15,6 +15,10 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
@@ -22,6 +26,8 @@ import (
 
 type BlogService struct {
 }
+
+const shutdownTimeout = 30 * time.Second
 
 func NewBlogService() (*BlogService, error) {
 	var service BlogService
@@ -79,48 +85,96 @@ func NewBlogService() (*BlogService, error) {
 }
 
 func (s *BlogService) Start() error {
-	if config.Cfg.Server.Devmode {
+	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancelServices := context.WithCancel(signalCtx)
+	defer cancelServices()
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, 8)
+	shutdownFns := make([]func(context.Context) error, 0, 4)
+
+	startService := func(name string, serve func() error) {
+		wg.Add(1)
 		go func() {
-			log.Println(http.ListenAndServe(":6060", nil))
-		}()
-	}
-	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
-	if config.Cfg.Server.HTTP3Enabled {
-		if err := tlscert.LoadCert(); err != nil {
-			return fmt.Errorf("load TLS cert: %w", err)
-		}
-		conn, err := net.ListenPacket("udp", addr)
-		if err != nil {
-			return fmt.Errorf("start HTTP3 server: %w", err)
-		}
-		srv := http3.Server{
-			Handler: router.GetRouter(),
-			Addr:    addr,
-			TLSConfig: http3.ConfigureTLSConfig(&tls.Config{
-				MinVersion:     tls.VersionTLS13,
-				GetCertificate: tlscert.GetCurrentCert,
-			}),
-			QUICConfig: &quic.Config{},
-		}
-		slog.Info("starting HTTP3 server", "port", config.Cfg.Server.Port)
-		go func() {
-			if err := srv.Serve(conn); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("failed to start HTTP3 server", "error", err)
+			defer wg.Done()
+			if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+				errCh <- fmt.Errorf("%s: %w", name, err)
 			}
 		}()
 	}
-	if config.Cfg.CertControl.Enabled {
-		if err := tlscert.Init(); err != nil {
-			return fmt.Errorf("init cert control: %w", err)
-		}
-		go tlscert.Start()
+
+	addShutdown := func(name string, shutdown func(context.Context) error) {
+		shutdownFns = append(shutdownFns, func(ctx context.Context) error {
+			if err := shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			return nil
+		})
 	}
-	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
-	if config.Cfg.TLS.Enabled {
+
+	if config.Cfg.Server.Devmode {
+		pprofSrv := &http.Server{
+			Addr:    ":6060",
+			Handler: http.DefaultServeMux,
+		}
+		slog.Info("starting pprof server", "addr", pprofSrv.Addr)
+		startService("pprof server", pprofSrv.ListenAndServe)
+		addShutdown("shutdown pprof server", pprofSrv.Shutdown)
+	}
+
+	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
+	if config.Cfg.Server.HTTP3Enabled || config.Cfg.TLS.Enabled {
 		if err := tlscert.LoadCert(); err != nil {
 			return fmt.Errorf("load TLS cert: %w", err)
 		}
-		srv := &http.Server{
+	}
+
+	if config.Cfg.Server.HTTP3Enabled {
+		conn, err := net.ListenPacket("udp", addr)
+		if err != nil {
+			slog.Warn("HTTP3 disabled because UDP address is unavailable", "addr", addr, "error", err)
+		} else {
+			srv := http3.Server{
+				Handler: router.GetRouter(),
+				Addr:    addr,
+				TLSConfig: http3.ConfigureTLSConfig(&tls.Config{
+					MinVersion:     tls.VersionTLS13,
+					GetCertificate: tlscert.GetCurrentCert,
+				}),
+				QUICConfig: &quic.Config{},
+			}
+			slog.Info("starting HTTP3 server", "port", config.Cfg.Server.Port)
+			startService("HTTP3 server", func() error {
+				defer func() {
+					if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+						slog.Warn("failed to close HTTP3 packet connection", "error", err)
+					}
+				}()
+				return srv.Serve(conn)
+			})
+			addShutdown("shutdown HTTP3 server", func(ctx context.Context) error {
+				err := srv.Shutdown(ctx)
+				if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+					err = errors.Join(err, closeErr)
+				}
+				return err
+			})
+		}
+	}
+
+	if config.Cfg.CertControl.Enabled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tlscert.StartContext(ctx)
+		}()
+	}
+
+	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
+	var tcpSrv *http.Server
+	if config.Cfg.TLS.Enabled {
+		tcpSrv = &http.Server{
 			Addr:    addr,
 			Handler: router.GetRouter(),
 			TLSConfig: &tls.Config{
@@ -128,16 +182,58 @@ func (s *BlogService) Start() error {
 				GetCertificate: tlscert.GetCurrentCert,
 			},
 		}
-		// Start HTTPS server
-		if err := srv.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("failed to start HTTPS server", "error", err)
-			return fmt.Errorf("start HTTPS server: %w", err)
-		}
+		slog.Info("starting HTTPS server", "port", config.Cfg.Server.Port)
+		startService("HTTPS server", func() error {
+			return tcpSrv.ListenAndServeTLS("", "")
+		})
 	} else {
-		if err := router.GetRouter().Run(addr); err != nil {
-			slog.Error("failed to start HTTP server", "error", err)
-			return fmt.Errorf("start HTTP server: %w", err)
+		tcpSrv = &http.Server{
+			Addr:    addr,
+			Handler: router.GetRouter(),
 		}
+		slog.Info("starting HTTP server", "port", config.Cfg.Server.Port)
+		startService("HTTP server", tcpSrv.ListenAndServe)
+	}
+	addShutdown("shutdown TCP server", tcpSrv.Shutdown)
+
+	var runErr error
+	select {
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
+	case err := <-errCh:
+		runErr = err
+		slog.Error("service failed, shutting down", "error", err)
+		cancelServices()
+		stop()
+	}
+	cancelServices()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	var shutdownErr error
+	for i := len(shutdownFns) - 1; i >= 0; i-- {
+		if err := shutdownFns[i](shutdownCtx); err != nil {
+			slog.Error("failed to shutdown service", "error", err)
+			shutdownErr = errors.Join(shutdownErr, err)
+		}
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		slog.Info("all services stopped")
+	case <-shutdownCtx.Done():
+		shutdownErr = errors.Join(shutdownErr, fmt.Errorf("shutdown timeout after %s: %w", shutdownTimeout, shutdownCtx.Err()))
+	}
+
+	if runErr != nil || shutdownErr != nil {
+		return errors.Join(runErr, shutdownErr)
 	}
 	return nil
 }

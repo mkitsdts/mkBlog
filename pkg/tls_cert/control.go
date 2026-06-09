@@ -1,6 +1,7 @@
 package tlscert
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -43,6 +44,12 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 var client *lego.Client
 var leuser MyUser
 var p challenge.Provider
+
+const (
+	renewalCheckInterval = 12 * time.Hour
+	renewalRetryInitial  = 6 * time.Hour
+	renewalRetryMax      = 24 * time.Hour
+)
 
 func Init() error {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -89,17 +96,71 @@ func Init() error {
 }
 
 func Start() {
+	StartContext(context.Background())
+}
+
+func StartContext(ctx context.Context) {
+	retryDelay := renewalRetryInitial
+
 	for {
-		if needRenew(config.Cfg.TLS.Cert) {
-			if err := applyTLSCert(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
-				time.Sleep(30 * time.Minute)
-				continue
+		if !needRenew(config.Cfg.TLS.Cert) {
+			retryDelay = renewalRetryInitial
+			if !sleepContext(ctx, renewalCheckInterval) {
+				return
 			}
-			if err := updateCert(); err != nil {
-				slog.Error("Failed to reload renewed certificate", "err", err)
-			}
+			continue
 		}
-		time.Sleep(12 * time.Hour)
+
+		if err := ensureClient(); err != nil {
+			slog.Error("Failed to initialize certificate renewal", "err", err)
+			if !sleepContext(ctx, retryDelay) {
+				return
+			}
+			retryDelay = nextRetryDelay(retryDelay)
+			continue
+		}
+
+		if err := applyTLSCert(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
+			if !sleepContext(ctx, retryDelay) {
+				return
+			}
+			retryDelay = nextRetryDelay(retryDelay)
+			continue
+		}
+
+		retryDelay = renewalRetryInitial
+		if err := updateCert(); err != nil {
+			slog.Error("Failed to reload renewed certificate", "err", err)
+		}
+		if !sleepContext(ctx, renewalCheckInterval) {
+			return
+		}
+	}
+}
+
+func ensureClient() error {
+	if client != nil {
+		return nil
+	}
+	return Init()
+}
+
+func nextRetryDelay(current time.Duration) time.Duration {
+	next := current * 2
+	if next > renewalRetryMax {
+		return renewalRetryMax
+	}
+	return next
+}
+
+func sleepContext(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 
