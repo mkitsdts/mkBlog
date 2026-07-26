@@ -7,7 +7,7 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-FROM golang:1.24-alpine AS backend
+FROM golang:1.26-alpine AS backend
 WORKDIR /app
 
 RUN sed -i 's#https\?://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#g' /etc/apk/repositories
