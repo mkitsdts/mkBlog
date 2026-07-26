@@ -4,7 +4,13 @@ import { loadConfig } from '@/config';
 
 // --- Data shape definitions (can be refined later) ---
 export interface ArticleSummary { title: string; summary?: string; updateAt?: string; UpdateAt?: string }
-export interface ArticleDetail { title: string; content: string; author?: string; updateAt?: string }
+export interface ArticleDetail {
+  title: string
+  content: string
+  author?: string
+  createAt?: string
+  updateAt?: string
+}
 export interface CommentItem {
   id: number;
   content: string;
