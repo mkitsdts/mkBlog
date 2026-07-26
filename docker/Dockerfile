@@ -28,7 +28,6 @@ FROM alpine:3.22
 WORKDIR /app
 
 COPY --from=backend /app/main .
-COPY --from=backend /app/static ./static
 COPY --from=frontend /app/frontend/dist/. ./static/
 
 EXPOSE 4801 8080

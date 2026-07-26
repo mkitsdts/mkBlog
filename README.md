@@ -194,19 +194,35 @@ Authorization: Bearer <your-token>
 
 ## Docker
 
+直接运行由 GitHub Actions 发布的多架构镜像：
+
 ```bash
-docker build -f docker/Dockerfile -t mkblog:latest .
-docker run -d --name mkblog -p 4801:4801 -v /etc/mkblog:/app/data mkblog:latest
+docker pull ghcr.io/mkitsdts/mkblog:latest
+docker run -d --name mkblog \
+  -p 4801:4801 \
+  -v /etc/mkblog:/etc/mkblog \
+  ghcr.io/mkitsdts/mkblog:latest
 ```
 
-容器中的运行数据会保存在 `/app/data`。
+也可以从源码本地构建：
+
+```bash
+docker build -f docker/Dockerfile -t mkblog:latest .
+```
+
+容器使用 `/etc/mkblog` 保存配置、数据库、日志和上传图片。请将该目录挂载到宿主机以持久化运行数据。
+
+GHCR 首次创建的软件包默认为私有。如果需要免登录拉取镜像，请在 GitHub 的软件包设置中将 `mkblog` 的可见性改为 `Public`。
 
 ## CI/CD
 
 - `main` 分支更新时，只有代码相关目录、Docker 文件或 GitHub Actions 工作流发生变更，才会触发服务器部署
 - 部署工作流会在服务器上执行 `make release`
-- GitHub Release 发布后，会自动构建并推送 `linux/amd64` 与 `linux/arm64` 多架构镜像到 Docker Hub
-- `docker/**` 或 `.github/workflows/**` 在 `main` 分支变化时，也会自动触发镜像构建与推送
+- 后端、前端、静态资源、Dockerfile 或镜像工作流在 `main` 分支发生变化时，会自动构建并推送镜像
+- 发布 GitHub Release 时也会构建镜像，并生成 `latest`、提交 SHA 和版本号标签
+- 镜像发布到 GitHub Container Registry：`ghcr.io/mkitsdts/mkblog`
+- Actions 页面支持通过 `workflow_dispatch` 手动触发镜像构建
+- 镜像同时支持 `linux/amd64` 与 `linux/arm64`
 
 ## 说明
 
