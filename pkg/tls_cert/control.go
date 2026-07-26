@@ -95,10 +95,6 @@ func Init() error {
 	return nil
 }
 
-func Start() {
-	StartContext(context.Background())
-}
-
 func StartContext(ctx context.Context) {
 	retryDelay := renewalRetryInitial
 
