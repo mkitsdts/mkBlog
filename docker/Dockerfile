@@ -31,6 +31,7 @@ COPY --from=backend /app/main .
 COPY --from=backend /app/static ./static
 COPY --from=frontend /app/frontend/dist/. ./static/
 
-EXPOSE 4801 6060
+EXPOSE 4801 8080
+EXPOSE 4802 6060
 
-CMD ["./main"]
+CMD ["./main", "-data_path", "/etc/mkblog"]
