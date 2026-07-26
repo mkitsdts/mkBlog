@@ -6,14 +6,16 @@ import (
 )
 
 func useDefaultConfig() {
-	pwd := PWD()
-	dataPath := path.Join(pwd, models.Default_Data_Path)
+	dataPath := Cfg.Server.DataPath
+	if !path.IsAbs(dataPath) {
+		dataPath = path.Join(PWD(), dataPath)
+	}
 	Cfg.Database.Kind = models.SQLite3
 
-	Cfg.Server.Port = models.Default_Server_Port
-	Cfg.Server.ImageSavePath = path.Join(dataPath, models.Default_Image_Save_Path)
-	Cfg.Server.Limiter.Duration = models.Default_Limiter_Duartion
-	Cfg.Server.Limiter.Requests = models.Default_Limiter_Requests
+	defaults := defaultServerConfig()
+	Cfg.Server.Port = defaults.Port
+	Cfg.Server.ImageSavePath = path.Join(dataPath, defaults.ImageSavePath)
+	Cfg.Server.Limiter = defaults.Limiter
 	Cfg.Server.HTTP3Enabled = false
 	Cfg.Server.Devmode = false
 

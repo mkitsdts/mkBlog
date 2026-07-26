@@ -29,9 +29,9 @@ func getDSN() string {
 			" dbname=" + config.Cfg.Database.Name +
 			" sslmode=disable TimeZone=UTC"
 	case models.SQLite3:
-		return path.Join(models.Default_Data_Path, config.Cfg.Database.Host)
+		return path.Join(config.Cfg.Server.DataPath, config.Cfg.Database.Host)
 	}
-	return path.Join(models.Default_Data_Path, models.Default_Data_File_Path)
+	return path.Join(config.Cfg.Server.DataPath, config.Cfg.Server.DataFilePath)
 }
 
 func openDatabase(dsn string) (*gorm.DB, error) {

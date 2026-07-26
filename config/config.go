@@ -50,10 +50,15 @@ type SiteConfig struct {
 }
 
 type ServerConfig struct {
-	Port          int    `json:"port" yaml:"port"`
-	Host          string `json:"host" yaml:"host"`
-	ImageSavePath string `json:"imageSavePath" yaml:"imageSavePath"`
-	Limiter       struct {
+	Port           int    `json:"port" yaml:"port"`
+	Host           string `json:"host" yaml:"host"`
+	DataPath       string `json:"-" yaml:"-"`
+	LogFilePath    string `json:"-" yaml:"-"`
+	ImageSavePath  string `json:"imageSavePath" yaml:"imageSavePath"`
+	ConfigFilePath string `json:"-" yaml:"-"`
+	DataFilePath   string `json:"-" yaml:"-"`
+	StaticFilePath string `json:"-" yaml:"-"`
+	Limiter        struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
 	} `json:"limiter" yaml:"limiter"`
@@ -70,11 +75,28 @@ type Config struct {
 	Site        SiteConfig               `json:"site" yaml:"site"`
 }
 
-var Cfg *Config = &Config{}
+func defaultServerConfig() ServerConfig {
+	cfg := ServerConfig{
+		Port:           models.Default_Server_Port,
+		DataPath:       models.Default_Data_Path,
+		LogFilePath:    models.Default_Log_File_Path,
+		ImageSavePath:  models.Default_Image_Save_Path,
+		ConfigFilePath: models.Default_Config_File_Path,
+		DataFilePath:   models.Default_Data_File_Path,
+		StaticFilePath: models.Default_Static_File_Path,
+	}
+	cfg.Limiter.Duration = models.Default_Limiter_Duartion
+	cfg.Limiter.Requests = models.Default_Limiter_Requests
+	return cfg
+}
+
+var Cfg = &Config{
+	Server: defaultServerConfig(),
+}
 
 func Init() {
 	// Fallback to config.yaml file if exists
-	configPath := path.Join(models.Default_Data_Path, models.Default_Config_File_Path)
+	configPath := path.Join(Cfg.Server.DataPath, Cfg.Server.ConfigFilePath)
 	file, err := os.Open(configPath)
 	if err != nil {
 		slog.Warn("config file not found, writing default config.yaml")
@@ -93,7 +115,9 @@ func Init() {
 		slog.Warn("Failed to decode config.yaml")
 		return
 	}
+}
 
+func Finalize() {
 	if Cfg.Site.Server != "" {
 		if normalized, err := normalizeServerURL(Cfg.Site.Server, Cfg.TLS.Enabled, Cfg.Server.Port); err != nil {
 			slog.Warn("invalid site.server, using raw value", "server", Cfg.Site.Server, "error", err)
@@ -104,8 +128,8 @@ func Init() {
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
 	if Cfg.TLS.Enabled {
-		Cfg.TLS.Cert = path.Join(models.Default_Data_Path, Cfg.TLS.Cert)
-		Cfg.TLS.Key = path.Join(models.Default_Data_Path, Cfg.TLS.Key)
+		Cfg.TLS.Cert = path.Join(Cfg.Server.DataPath, Cfg.TLS.Cert)
+		Cfg.TLS.Key = path.Join(Cfg.Server.DataPath, Cfg.TLS.Key)
 	}
 
 	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)

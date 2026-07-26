@@ -2,7 +2,6 @@ package config
 
 import (
 	"log/slog"
-	"mkBlog/models"
 	"os"
 	"path"
 )
@@ -62,6 +61,6 @@ func PWD() string {
 
 func writeImpl() error {
 	slog.Debug("write impl begin")
-	p := path.Join(models.Default_Data_Path, models.Default_Config_File_Path)
+	p := path.Join(Cfg.Server.DataPath, Cfg.Server.ConfigFilePath)
 	return os.WriteFile(p, []byte(impl), 0644)
 }

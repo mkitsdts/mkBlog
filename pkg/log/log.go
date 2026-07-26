@@ -2,7 +2,7 @@ package log
 
 import (
 	"log/slog"
-	"mkBlog/models"
+	"mkBlog/config"
 	"os"
 	"path"
 
@@ -10,7 +10,7 @@ import (
 )
 
 func Init(flag bool) {
-	logPath := path.Join(models.Default_Data_Path, models.Default_Log_File_Path)
+	logPath := path.Join(config.Cfg.Server.DataPath, config.Cfg.Server.LogFilePath)
 	_, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		panic("failed to open log file: " + err.Error())
