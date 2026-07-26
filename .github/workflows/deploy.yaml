@@ -18,10 +18,39 @@ on:
       - "docker/**"
       - "deploy/**"
       - ".github/workflows/**"
+  workflow_run:
+    workflows:
+      - Build and Push Docker Images
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: Deployment method
+        required: true
+        type: choice
+        default: docker
+        options:
+          - docker
+          - makefile
+
+concurrency:
+  group: deploy-mkblog
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && vars.DEPLOY_MODE == 'makefile') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       vars.DEPLOY_MODE != 'makefile')
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_mode || vars.DEPLOY_MODE || 'docker' }}
 
     steps:
       - name: Prepare deploy key file
@@ -36,12 +65,29 @@ jobs:
       - name: Add SSH known host
         run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Update remote repository
+      - name: Deploy with Makefile
+        if: env.DEPLOY_MODE == 'makefile'
         run: |
           ssh -o BatchMode=yes -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.REMOTE_REPO_PATH }} && git fetch origin main && git checkout main && git pull --ff-only origin main"
+            "set -e;
+             docker rm -f mkblog >/dev/null 2>&1 || true;
+             cd ${{ secrets.REMOTE_REPO_PATH }};
+             git fetch origin main;
+             git checkout main;
+             git pull --ff-only origin main;
+             make release"
 
-      - name: Build and restart remote service
+      - name: Deploy with Docker
+        if: env.DEPLOY_MODE == 'docker'
         run: |
           ssh -o BatchMode=yes -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.REMOTE_REPO_PATH }} && make release"
+            "set -e;
+             sudo systemctl stop mkblog >/dev/null 2>&1 || true;
+             docker pull ghcr.io/mkitsdts/mkblog:latest;
+             docker rm -f mkblog >/dev/null 2>&1 || true;
+             docker run -d \
+               --name mkblog \
+               --restart unless-stopped \
+               -p 4801:4801 \
+               -v /etc/mkblog:/etc/mkblog \
+               ghcr.io/mkitsdts/mkblog:latest"
