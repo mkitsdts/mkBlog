@@ -45,7 +45,6 @@ type SiteConfig struct {
 	About          string `json:"about" yaml:"about"`
 	AvatarPath     string `json:"avatarPath" yaml:"avatarPath"`
 	BgPicturePath  string `json:"bgPicturePath" yaml:"bgPicturePath"`
-	Server         string `json:"server" yaml:"server"`
 	DevMode        bool   `json:"devmode" yaml:"devmode"`
 	CommentEnabled bool   `json:"comment_enabled" yaml:"comment_enabled"`
 	ICP            string `json:"icp" yaml:"icp"`
@@ -122,7 +121,8 @@ func Finalize() {
 	// Migrate the old generated default so upgrades stop writing images below
 	// the former static directory.
 	if imageSavePath == "" ||
-		filepath.Clean(imageSavePath) == "images" {
+		filepath.Clean(imageSavePath) == "images" ||
+		filepath.Clean(imageSavePath) == filepath.Join("static", "images") {
 		imageSavePath = models.Default_Image_Save_Path
 	}
 	if !filepath.IsAbs(imageSavePath) {
@@ -130,13 +130,6 @@ func Finalize() {
 	}
 	Cfg.Server.ImageSavePath = filepath.Clean(imageSavePath)
 
-	if Cfg.Site.Server != "" {
-		if normalized, err := normalizeServerURL(Cfg.Site.Server, Cfg.TLS.Enabled, Cfg.Server.Port); err != nil {
-			slog.Warn("invalid site.server, using raw value", "server", Cfg.Site.Server, "error", err)
-		} else {
-			Cfg.Site.Server = normalized
-		}
-	}
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
 	if Cfg.TLS.Enabled {

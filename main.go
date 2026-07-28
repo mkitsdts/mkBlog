@@ -19,6 +19,9 @@ func Init(debugflag *bool, serverFlags config.ServerConfig) {
 	if err := os.MkdirAll(config.Cfg.Server.DataPath, 0755); err != nil {
 		return
 	}
+	if err := staticfiles.EnsureDefaultAvatar(config.Cfg.Server.DataPath); err != nil {
+		slog.Warn("failed to initialize default avatar", "error", err)
+	}
 	if debugflag != nil {
 		applog.Init(*debugflag)
 	} else {

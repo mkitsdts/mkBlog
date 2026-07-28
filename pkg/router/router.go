@@ -68,7 +68,6 @@ func InitRouter() error {
 			About          string `json:"about"`
 			AvatarPath     string `json:"avatarPath"`
 			BgPicturePath  string `json:"bgPicturePath"`
-			Server         string `json:"server"`
 			DevMode        bool   `json:"devmode"`
 			CommentEnabled bool   `json:"comment_enabled"`
 			ICP            string `json:"icp"`
@@ -77,7 +76,6 @@ func InitRouter() error {
 			About:          site.About,
 			AvatarPath:     site.AvatarPath,
 			BgPicturePath:  site.BgPicturePath,
-			Server:         site.Server,
 			DevMode:        site.DevMode,
 			CommentEnabled: site.CommentEnabled,
 			ICP:            site.ICP,
@@ -141,6 +139,9 @@ func InitRouter() error {
 	// 2) 其它静态资源全部从编译进二进制的文件系统提供。
 	r.GET("/assets/*any", assetHandler)
 	r.GET("/static/*any", func(c *gin.Context) {
+		if serveStaticSiteAsset(c) {
+			return
+		}
 		c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/static")
 		assetHandler(c)
 	})
@@ -169,4 +170,51 @@ func fileExists(p string) bool {
 		return false
 	}
 	return !fi.IsDir()
+}
+
+func serveStaticSiteAsset(c *gin.Context) bool {
+	switch c.Request.URL.Path {
+	case "/static/avatar.jpg":
+		serveSiteAsset(c, config.Cfg.Site.AvatarPath, "avatar.jpg")
+		return true
+	case "/static/background.jpg":
+		serveSiteAsset(c, config.Cfg.Site.BgPicturePath, "")
+		return true
+	default:
+		return false
+	}
+}
+
+func serveSiteAsset(c *gin.Context, configuredPath, fallbackPath string) {
+	assetPath, err := resolveSiteAssetPath(config.Cfg.Server.DataPath, configuredPath)
+	if (err != nil || !fileExists(assetPath)) && fallbackPath != "" {
+		assetPath, err = resolveSiteAssetPath(config.Cfg.Server.DataPath, fallbackPath)
+	}
+	if err != nil || !fileExists(assetPath) {
+		c.JSON(http.StatusNotFound, gin.H{"msg": "site asset not found"})
+		return
+	}
+	c.Header("Cache-Control", "no-cache")
+	c.File(assetPath)
+}
+
+func resolveSiteAssetPath(dataRoot, configuredPath string) (string, error) {
+	configuredPath = strings.TrimSpace(configuredPath)
+	if configuredPath == "" || filepath.IsAbs(configuredPath) {
+		return "", fmt.Errorf("site asset path must be relative to the data directory")
+	}
+
+	root, err := filepath.Abs(dataRoot)
+	if err != nil {
+		return "", err
+	}
+	assetPath, err := filepath.Abs(filepath.Join(root, configuredPath))
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(root, assetPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("site asset path escapes the data directory")
+	}
+	return assetPath, nil
 }

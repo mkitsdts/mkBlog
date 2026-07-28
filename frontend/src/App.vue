@@ -14,7 +14,7 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import { imageExists, loadConfig, resolveSiteStaticAssetUrl } from '@/config'
+import { imageExists, loadConfig, resolveSiteAssetUrl } from '@/config'
 
 export default {
   name: 'App',
@@ -33,7 +33,7 @@ export default {
       try {
         const conf = await loadConfig()
         icp.value = conf.icp || ''
-        const preferredBg = resolveSiteStaticAssetUrl(conf.bgPicturePath)
+        const preferredBg = resolveSiteAssetUrl(conf.bgPicturePath, '/static/background.jpg')
         bgUrl.value = await imageExists(preferredBg) ? preferredBg : ''
       } catch (e) {
         console.error('Failed to load site config in App.vue', e)

@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-前端运行时通过请求 `/config.yaml`（后端静态暴露）获取站点配置，不再构建期生成。
+前端运行时通过同源的 `/api/site` 获取站点配置，其他接口也统一使用同源 `/api` 前缀。
 
 ### Type-Check, Compile and Minify for Production
 
@@ -38,9 +38,10 @@ npm run build
 
 ```yaml
 site:
-	signature: 你的签名
-	avatarPath: avatar.jpg
-	server: https://example.com/api
+  signature: 你的签名
+  avatarPath: avatar.jpg
 ```
 
+`avatarPath` 相对于后端的 `data/` 目录。程序首次启动时会生成
+`data/avatar.jpg`，可直接替换该文件，或修改 `avatarPath` 切换头像。
 修改 `config.yaml` 后重新部署容器即可生效（无需重新前端构建，除非新增字段）。

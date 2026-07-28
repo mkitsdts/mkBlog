@@ -110,10 +110,14 @@ make build
 - `auth.secret`: 写接口使用的 Token
 - `site.signature`: 首页签名
 - `site.about`: 关于页面内容
-- `site.avatarPath`: 头像文件名
-- `site.server`: 对外访问地址
+- `site.avatarPath`: 头像文件名（相对于 `data/` 目录）
+- `site.bgPicturePath`: 背景图片文件名（相对于 `data/` 目录）
 - `site.comment_enabled`: 是否开启评论
 - `site.icp`: 备案号
+
+首次创建 `data/` 目录时，程序会写入内嵌的默认头像 `data/avatar.jpg`。
+直接替换该文件即可切换头像，也可以把 `site.avatarPath` 改为 `data/`
+目录下的其他相对文件名；程序不会覆盖已经存在的头像。
 
 ### 3. 构建前端
 
@@ -140,7 +144,7 @@ make sync-static backend-build
 http://127.0.0.1:4801
 ```
 
-如果正确设置了 `site.server`，前端会使用该地址作为生产环境 API 根地址。
+前端始终通过当前站点的 `/api` 路径访问后端，无需额外配置 API 地址。
 
 ## 数据库说明
 

@@ -3,7 +3,6 @@ export interface SiteConfig {
   signature: string
   avatarPath: string
   bgPicturePath: string
-  server: string
   comment_enabled: boolean
   about?: string // 添加 about 字段
   icp?: string   // 备案号，可选
@@ -11,13 +10,15 @@ export interface SiteConfig {
 
 let cachedSite: SiteConfig | null = null
 
-export const DEFAULT_AVATAR_URL = new URL('./assets/avatar.jpg', import.meta.url).href
+export const DEFAULT_AVATAR_URL = '/static/avatar.jpg'
 
-export function resolveSiteStaticAssetUrl(assetPath?: string): string {
+export function resolveSiteAssetUrl(assetPath: string | undefined, localEndpoint: string): string {
   const value = String(assetPath || '').trim()
   if (!value) return ''
-  if (/^https?:\/\//i.test(value) || value.startsWith('/')) return value
-  return `/static/${value.replace(/^\/+/, '')}`
+  if (/^(?:https?:)?\/\//i.test(value) || value.startsWith('/') || /^(?:data|blob):/i.test(value)) {
+    return value
+  }
+  return localEndpoint
 }
 
 export function imageExists(url?: string): Promise<boolean> {
@@ -40,7 +41,6 @@ export async function loadConfig(): Promise<SiteConfig> {
       signature: site.signature || '鼠鼠很懒，什么都没有留下',
       avatarPath: site.avatarPath || '',
       bgPicturePath: site.bgPicturePath || '',
-      server: site.server || '',
       comment_enabled: site.comment_enabled !== false && site.comment_enabled !== 'false',
       about: site.about || '鼠鼠已经离开了星球', // 加载 about 字段
       icp: site.icp || ''
@@ -51,7 +51,6 @@ export async function loadConfig(): Promise<SiteConfig> {
       signature: '签名未配置',
       avatarPath: '',
       bgPicturePath: '',
-      server: '',
       comment_enabled: true,
       about: '未配置关于内容'
     } // 默认 about 内容

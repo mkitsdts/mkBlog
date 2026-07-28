@@ -44,9 +44,8 @@ server:
 site:
   signature: "鼠鼠是穿越者..."         # 个性签名
   about: "鼠鼠是一个喜欢折腾的程序员..." # 关于我
-  avatarPath: avatar.jpg          # 头像路径
+  avatarPath: avatar.jpg          # 头像路径（相对于 data 目录，可替换或改名）
   bgPicturePath: background.jpg    # 背景图路径
-  server: http://localhost:4801   # 远程路径，不需要填写端口号
   comment_enabled: false          # 是否启用评论功能
   icp: 粤ICP备123456789号          # 备案号（可选）
 `

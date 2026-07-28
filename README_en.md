@@ -111,10 +111,15 @@ Update `./data/config.yaml` and review these fields:
 - `auth.secret`
 - `site.signature`
 - `site.about`
-- `site.avatarPath`
-- `site.server`
+- `site.avatarPath` (relative to the `data/` directory)
+- `site.bgPicturePath` (relative to the `data/` directory)
 - `site.comment_enabled`
 - `site.icp`
+
+When the `data/` directory is created for the first time, the application writes
+the embedded default avatar to `data/avatar.jpg`. Replace that file to switch the
+avatar, or set `site.avatarPath` to another relative file under `data/`. Existing
+avatar files are never overwritten.
 
 ### 3. Build the frontend
 
@@ -141,7 +146,7 @@ Default address:
 http://127.0.0.1:4801
 ```
 
-If `site.server` is configured correctly, the frontend uses that value as the production API root.
+The frontend always accesses the backend through `/api` on the current origin, so no separate API address is required.
 
 ## Database Notes
 

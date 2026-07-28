@@ -1,6 +1,5 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosResponse } from 'axios';
-import { loadConfig } from '@/config';
 
 // --- Data shape definitions (can be refined later) ---
 export interface ArticleSummary { title: string; summary?: string; updateAt?: string; UpdateAt?: string }
@@ -27,16 +26,10 @@ export interface CommentsResponse { comments: CommentItem[] }
 let clientPromise: Promise<AxiosInstance> | null = null;
 async function getClient(): Promise<AxiosInstance> {
   if (!clientPromise) {
-    clientPromise = (async () => {
-      const site: any = await loadConfig();
-      const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.DEV;
-      const baseRoot = isDev ? '' : (site.server || '');
-      const base = (baseRoot || '').replace(/\/$/, '');
-      return axios.create({
-        baseURL: `${base}/api`,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    })();
+    clientPromise = Promise.resolve(axios.create({
+      baseURL: '/api',
+      headers: { 'Content-Type': 'application/json' },
+    }));
   }
   return clientPromise;
 }
