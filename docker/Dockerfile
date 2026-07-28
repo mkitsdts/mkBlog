@@ -15,6 +15,7 @@ RUN apk update
 RUN apk add gcc g++ git
 
 COPY . .
+COPY --from=frontend /app/frontend/dist/. ./static/dist/
 RUN go env -w GOPROXY=https://goproxy.io,direct
 RUN go mod tidy
 
@@ -28,7 +29,6 @@ FROM alpine:3.22
 WORKDIR /app
 
 COPY --from=backend /app/main .
-COPY --from=frontend /app/frontend/dist/. ./static/
 
 EXPOSE 4801 8080
 EXPOSE 4802 6060

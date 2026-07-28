@@ -5,6 +5,8 @@ import (
 	"mkBlog/models"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -57,7 +59,6 @@ type ServerConfig struct {
 	ImageSavePath  string `json:"imageSavePath" yaml:"imageSavePath"`
 	ConfigFilePath string `json:"-" yaml:"-"`
 	DataFilePath   string `json:"-" yaml:"-"`
-	StaticFilePath string `json:"-" yaml:"-"`
 	Limiter        struct {
 		Requests int `json:"requests" yaml:"requests"`
 		Duration int `json:"duration" yaml:"duration"`
@@ -83,7 +84,6 @@ func defaultServerConfig() ServerConfig {
 		ImageSavePath:  models.Default_Image_Save_Path,
 		ConfigFilePath: models.Default_Config_File_Path,
 		DataFilePath:   models.Default_Data_File_Path,
-		StaticFilePath: models.Default_Static_File_Path,
 	}
 	cfg.Limiter.Duration = models.Default_Limiter_Duartion
 	cfg.Limiter.Requests = models.Default_Limiter_Requests
@@ -118,6 +118,18 @@ func Init() {
 }
 
 func Finalize() {
+	imageSavePath := strings.TrimSpace(Cfg.Server.ImageSavePath)
+	// Migrate the old generated default so upgrades stop writing images below
+	// the former static directory.
+	if imageSavePath == "" ||
+		filepath.Clean(imageSavePath) == "images" {
+		imageSavePath = models.Default_Image_Save_Path
+	}
+	if !filepath.IsAbs(imageSavePath) {
+		imageSavePath = filepath.Join(Cfg.Server.DataPath, imageSavePath)
+	}
+	Cfg.Server.ImageSavePath = filepath.Clean(imageSavePath)
+
 	if Cfg.Site.Server != "" {
 		if normalized, err := normalizeServerURL(Cfg.Site.Server, Cfg.TLS.Enabled, Cfg.Server.Port); err != nil {
 			slog.Warn("invalid site.server, using raw value", "server", Cfg.Site.Server, "error", err)

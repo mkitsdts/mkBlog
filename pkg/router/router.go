@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"mkBlog/config"
 	"mkBlog/pkg/cache"
 	"mkBlog/pkg/middleware"
@@ -38,7 +39,15 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func InitRouter() error {
-	gin.SetMode(gin.ReleaseMode)
+	assetCache := cache.GetGlobalAssetCache()
+	if assetCache == nil {
+		return fmt.Errorf("embedded static asset cache is not initialized")
+	}
+	assetHandler := assetCache.Handler()
+
+	if !config.Cfg.Server.Devmode {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r = gin.New()
 	r.Use(gin.Logger(), gin.Recovery(), CORSMiddleware())
 	// 启用黑名单
@@ -89,13 +98,8 @@ func InitRouter() error {
 
 		// 如果是单段路径 /article/:title（没有后续文件名），这是前端 SPA 的文章详情路由，直接返回 index.html
 		if !strings.Contains(rel, "/") || strings.HasSuffix(clean, "/") {
-			if cache.GetGlobalAssetCache() != nil {
-				// 复用缓存处理器返回 SPA 入口
-				c.Request.URL.Path = "/"
-				cache.GetGlobalAssetCache().Handler()(c)
-			} else {
-				c.File("./static/index.html")
-			}
+			c.Request.URL.Path = "/"
+			assetHandler(c)
 			return
 		}
 
@@ -134,36 +138,26 @@ func InitRouter() error {
 		c.Next()
 	})
 
-	// 2) 其它静态资源
-	if cache.GetGlobalAssetCache() != nil {
-		r.GET("/assets/*any", cache.GetGlobalAssetCache().Handler())
-		r.GET("/static/*any", func(c *gin.Context) {
-			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/static")
-			cache.GetGlobalAssetCache().Handler()(c)
-		})
-		r.GET("/", cache.GetGlobalAssetCache().Handler())
-		r.GET("/index.html", cache.GetGlobalAssetCache().Handler())
-		r.GET("/icon.svg", cache.GetGlobalAssetCache().Handler())
-		r.NoRoute(func(c *gin.Context) {
-			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
-				c.JSON(404, gin.H{"msg": "not found"})
-				return
-			}
-			c.Request.URL.Path = "/"
-			cache.GetGlobalAssetCache().Handler()(c)
-		})
-	} else {
-		r.Static("/assets", "./static/assets")
-		r.Static("/static", "./static")
-		r.StaticFile("/", "./static/index.html")
-		r.NoRoute(func(c *gin.Context) {
-			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
-				c.JSON(404, gin.H{"msg": "not found"})
-				return
-			}
-			c.File("./static/index.html")
-		})
-	}
+	// 2) 其它静态资源全部从编译进二进制的文件系统提供。
+	r.GET("/assets/*any", assetHandler)
+	r.GET("/static/*any", func(c *gin.Context) {
+		c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/static")
+		assetHandler(c)
+	})
+	r.GET("/", assetHandler)
+	r.GET("/index.html", assetHandler)
+	r.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(404, gin.H{"msg": "not found"})
+			return
+		}
+		if assetCache.Has(c.Request.URL.Path) {
+			assetHandler(c)
+			return
+		}
+		c.Request.URL.Path = "/"
+		assetHandler(c)
+	})
 
 	return nil
 }

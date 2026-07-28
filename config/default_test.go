@@ -3,6 +3,7 @@ package config
 import (
 	"mkBlog/models"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"go.yaml.in/yaml/v3"
@@ -25,9 +26,6 @@ func TestDefaultServerConfig(t *testing.T) {
 	}
 	if cfg.DataFilePath != models.Default_Data_File_Path {
 		t.Errorf("data file path = %q, want %q", cfg.DataFilePath, models.Default_Data_File_Path)
-	}
-	if cfg.StaticFilePath != models.Default_Static_File_Path {
-		t.Errorf("static file path = %q, want %q", cfg.StaticFilePath, models.Default_Static_File_Path)
 	}
 	if cfg.Port != models.Default_Server_Port {
 		t.Errorf("server port = %d, want %d", cfg.Port, models.Default_Server_Port)
@@ -60,9 +58,6 @@ func TestRuntimePathsSurviveConfigDecode(t *testing.T) {
 	if cfg.Server.DataFilePath != models.Default_Data_File_Path {
 		t.Errorf("data file path changed to %q", cfg.Server.DataFilePath)
 	}
-	if cfg.Server.StaticFilePath != models.Default_Static_File_Path {
-		t.Errorf("static file path changed to %q", cfg.Server.StaticFilePath)
-	}
 	if cfg.Server.Port != 9000 {
 		t.Errorf("server port = %d, want 9000", cfg.Server.Port)
 	}
@@ -85,12 +80,12 @@ func TestUseDefaultConfigDataPath(t *testing.T) {
 		{
 			name:     "absolute path",
 			dataPath: "/etc/mkblog",
-			want:     "/etc/mkblog/images",
+			want:     "/etc/mkblog/img",
 		},
 		{
 			name:     "relative path",
 			dataPath: "./custom-data",
-			want:     path.Join(PWD(), "custom-data", "images"),
+			want:     path.Join(PWD(), "custom-data", "img"),
 		},
 	}
 
@@ -103,6 +98,62 @@ func TestUseDefaultConfigDataPath(t *testing.T) {
 			}
 
 			useDefaultConfig()
+
+			if got := Cfg.Server.ImageSavePath; got != tt.want {
+				t.Fatalf("image save path = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFinalizeImageSavePath(t *testing.T) {
+	originalCfg := Cfg
+	t.Cleanup(func() {
+		Cfg = originalCfg
+	})
+
+	tests := []struct {
+		name          string
+		dataPath      string
+		imageSavePath string
+		want          string
+	}{
+		{
+			name:          "new default",
+			dataPath:      "./data",
+			imageSavePath: "img",
+			want:          filepath.Join("data", "img"),
+		},
+		{
+			name:          "migrate legacy generated default",
+			dataPath:      "./data",
+			imageSavePath: "static/images",
+			want:          filepath.Join("data", "img"),
+		},
+		{
+			name:          "custom relative directory",
+			dataPath:      "./data",
+			imageSavePath: "pictures",
+			want:          filepath.Join("data", "pictures"),
+		},
+		{
+			name:          "custom absolute directory",
+			dataPath:      "./data",
+			imageSavePath: "/srv/mkblog-pictures",
+			want:          "/srv/mkblog-pictures",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Cfg = &Config{
+				Server: ServerConfig{
+					DataPath:      tt.dataPath,
+					ImageSavePath: tt.imageSavePath,
+				},
+			}
+
+			Finalize()
 
 			if got := Cfg.Server.ImageSavePath; got != tt.want {
 				t.Fatalf("image save path = %q, want %q", got, tt.want)

@@ -1,44 +1,52 @@
 package cache
 
 import (
+	"strings"
 	"testing"
-	"time"
+	"testing/fstest"
 )
 
-func TestCacheBuild(t *testing.T) {
-	BuildAssetCache("../../static")
-	t.Log("Cache build succeeded")
-	asset := globalAssetCache.Get("/index.html")
-	if asset == nil {
-		t.Error("Expected /index.html to be in the asset cache")
-		return
+func TestBuildAssetCache(t *testing.T) {
+	files := fstest.MapFS{
+		"index.html": {
+			Data: []byte("<!doctype html><title>mkBlog</title>"),
+		},
+		"assets/app.js": {
+			Data: []byte("console.log('mkBlog')"),
+		},
+		"asset.bin": {
+			Data: []byte{0x00, 0x01, 0x02},
+		},
 	}
-	t.Log("Asset /index.html found in cache")
-	if asset.raw != nil {
-		t.Log(string(asset.raw))
-	} else {
-		t.Error("Expected raw data for /index.html to be non-nil")
+
+	if err := BuildAssetCache(files); err != nil {
+		t.Fatalf("build cache: %v", err)
 	}
-	t.Log(asset.etag)
+
+	index := globalAssetCache.Get("/")
+	if index == nil {
+		t.Fatal("expected / to resolve to index.html")
+	}
+	if got := string(index.raw); !strings.Contains(got, "mkBlog") {
+		t.Fatalf("index content = %q", got)
+	}
+	if !globalAssetCache.Has("/assets/app.js") {
+		t.Fatal("expected JavaScript asset in cache")
+	}
+	if !globalAssetCache.Has("/asset.bin") {
+		t.Fatal("all files in the frontend dist should be cached")
+	}
 }
 
-func TestWatchCacheFiles(t *testing.T) {
-	Init("../../static")
-	go func() {
-		asset := globalAssetCache.Get("/index.html")
-		if asset == nil {
-			panic("failed to get index.html")
-		}
-		if asset.raw != nil {
-			println(string(asset.raw))
-		}
-		time.Sleep(10 * time.Second)
-		asset = globalAssetCache.Get("/index.html")
-		if asset == nil {
-			t.Log("Successfully remove file")
-		} else {
-			t.Error("Failed to remove file")
-		}
-	}()
-	time.Sleep(100 * time.Minute)
+func TestBuildAssetCacheRequiresIndex(t *testing.T) {
+	files := fstest.MapFS{
+		"assets/app.js": {
+			Data: []byte("console.log('mkBlog')"),
+		},
+	}
+
+	err := BuildAssetCache(files)
+	if err == nil || !strings.Contains(err.Error(), "static/dist/index.html is missing") {
+		t.Fatalf("expected missing index error, got %v", err)
+	}
 }

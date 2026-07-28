@@ -4,123 +4,95 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io/fs"
 	"log/slog"
-	"os"
-	"path/filepath"
+	"mime"
+	"path"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/andybalholm/brotli"
 	"github.com/gin-gonic/gin"
 )
 
 type cachedAsset struct {
-	path        string
 	raw         []byte
 	gzipData    []byte
 	brData      []byte
 	etag        string
-	modTime     time.Time
 	contentType string
 }
 
 type AssetCache struct {
-	root  string
 	items map[string]*cachedAsset // key: URL 路径 (/assets/xxx.css 或 /index.html)
 }
 
 var globalAssetCache *AssetCache
-var once sync.Once
 
-func Init(root string) {
-	once.Do(func() {
-		BuildAssetCache(root)
-	})
-	go WatchCacheFiles(root)
+func Init(root fs.FS) error {
+	return BuildAssetCache(root)
 }
 
 func GetGlobalAssetCache() *AssetCache {
 	return globalAssetCache
 }
 
-func BuildAssetCache(root string) {
-	globalAssetCache = &AssetCache{items: make(map[string]*cachedAsset)}
-	globalAssetCache.root = root
-	// 允许的扩展名集合
-	allow := map[string]string{
-		".html": "text/html; charset=utf-8",
-		".css":  "text/css; charset=utf-8",
-		".js":   "application/javascript; charset=utf-8",
-		".json": "application/json; charset=utf-8",
-		".ico":  "image/x-icon",
-		".svg":  "image/svg+xml",
-		".png":  "image/png",
-		".jpg":  "image/jpeg",
-		".jpeg": "image/jpeg",
-		".webp": "image/webp",
-	}
-
-	addFile := func(absPath, webPath string, info fs.FileInfo) error {
-		ext := strings.ToLower(filepath.Ext(absPath))
-		ct, ok := allow[ext]
-		if !ok {
-			return nil
+func BuildAssetCache(root fs.FS) error {
+	assetCache := &AssetCache{items: make(map[string]*cachedAsset)}
+	addFile := func(filePath, webPath string) error {
+		ext := strings.ToLower(path.Ext(filePath))
+		ct := mime.TypeByExtension(ext)
+		if ct == "" {
+			ct = "application/octet-stream"
 		}
-		data, err := os.ReadFile(absPath)
+		data, err := fs.ReadFile(root, filePath)
 		if err != nil {
 			return err
 		}
 		sum := sha256.Sum256(data)
 		etag := `"` + hex.EncodeToString(sum[:8]) + `"` // 截断 8 bytes 足够
 		ca := &cachedAsset{
-			path:        webPath,
 			raw:         data,
 			etag:        etag,
-			modTime:     info.ModTime(),
 			contentType: ct,
 		}
-		// gzip
-		var gzBuf strings.Builder
-		gzWriter, _ := gzip.NewWriterLevel(&gzBuf, gzip.BestCompression)
-		_, _ = gzWriter.Write(data)
-		_ = gzWriter.Close()
-		ca.gzipData = []byte(gzBuf.String())
+		if isText(ct) {
+			var gzBuf strings.Builder
+			gzWriter, _ := gzip.NewWriterLevel(&gzBuf, gzip.BestCompression)
+			_, _ = gzWriter.Write(data)
+			_ = gzWriter.Close()
+			ca.gzipData = []byte(gzBuf.String())
 
-		var brBuf strings.Builder
-		brWriter := brotli.NewWriterLevel(&brBuf, brotli.BestCompression)
-		_, _ = brWriter.Write(data)
-		_ = brWriter.Close()
-		ca.brData = []byte(brBuf.String())
+			var brBuf strings.Builder
+			brWriter := brotli.NewWriterLevel(&brBuf, brotli.BestCompression)
+			_, _ = brWriter.Write(data)
+			_ = brWriter.Close()
+			ca.brData = []byte(brBuf.String())
+		}
 
-		globalAssetCache.items[webPath] = ca
+		assetCache.items[webPath] = ca
 		return nil
 	}
 
-	// 扫描 root
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	// 扫描嵌入式文件系统。
+	err := fs.WalkDir(root, ".", func(filePath string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if d.IsDir() {
 			return nil
 		}
-		info, _ := d.Info()
-		rel, _ := filepath.Rel(root, path)
-		rel = filepath.ToSlash(rel)
-		webPath := "/" + rel
-		// assets 下的文件保持 /assets/... 前缀
-		if strings.HasPrefix(rel, "assets/") {
-			webPath = "/" + rel
-		}
-		// index.html 允许直接 /index.html
-		return addFile(path, webPath, info)
+		return addFile(filePath, "/"+filePath)
 	})
 	if err != nil {
-		return
+		return fmt.Errorf("build embedded asset cache: %w", err)
 	}
-	slog.Info("asset cache built", "count", len(globalAssetCache.items))
+	if assetCache.items["/index.html"] == nil {
+		return fmt.Errorf("build embedded asset cache: static/dist/index.html is missing")
+	}
+	globalAssetCache = assetCache
+	slog.Info("embedded asset cache built", "count", len(globalAssetCache.items))
+	return nil
 }
 
 func (ac *AssetCache) Get(path string) *cachedAsset {
@@ -130,6 +102,10 @@ func (ac *AssetCache) Get(path string) *cachedAsset {
 		}
 	}
 	return ac.items[path]
+}
+
+func (ac *AssetCache) Has(path string) bool {
+	return ac.Get(path) != nil
 }
 
 func (ac *AssetCache) Handler() gin.HandlerFunc {
@@ -151,7 +127,7 @@ func (ac *AssetCache) Handler() gin.HandlerFunc {
 		c.Header("Content-Type", asset.contentType)
 
 		// 缓存策略：带 hash 的文件（Vite 产物路径通常 /assets/xxxxx.[hash].css）
-		if strings.HasPrefix(p, "/assets/") && strings.Contains(p, ".") && strings.Contains(p, ".") {
+		if strings.HasPrefix(p, "/assets/") && strings.Contains(p, ".") {
 			c.Header("Cache-Control", "public,max-age=31536000,immutable")
 		} else if p == "/index.html" || p == "/" {
 			c.Header("Cache-Control", "no-cache")

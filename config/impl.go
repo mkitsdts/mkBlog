@@ -34,7 +34,7 @@ auth:
 
 server:
   port: 4801                     # 服务器端口
-  imageSavePath: static/images   # 图片保存路径
+  imageSavePath: img             # 图片保存路径（相对于 data 目录）
   limiter:
     requests: 100                # 每个IP在duration内最多允许的请求数
     duration: 5                  # 限制的时间窗口，单位为秒
