@@ -11,6 +11,7 @@ import (
 	"mkBlog/pkg/middleware"
 	"mkBlog/pkg/router"
 	"mkBlog/service"
+	staticfiles "mkBlog/static"
 	"os"
 )
 
@@ -29,7 +30,9 @@ func Init(debugflag *bool, serverFlags config.ServerConfig) {
 	config.Finalize()
 
 	bloom.Init()
-	cache.Init(config.Cfg.Server.StaticFilePath)
+	if err := cache.Init(staticfiles.Files()); err != nil {
+		panic("failed to initialize embedded static files: " + err.Error())
+	}
 	middleware.Init()
 }
 
@@ -46,8 +49,6 @@ func applyServerFlagOverrides(values config.ServerConfig) {
 			config.Cfg.Server.ConfigFilePath = values.ConfigFilePath
 		case "data_file_path":
 			config.Cfg.Server.DataFilePath = values.DataFilePath
-		case "static_file_path":
-			config.Cfg.Server.StaticFilePath = values.StaticFilePath
 		case "server_port":
 			config.Cfg.Server.Port = values.Port
 		case "limiter_duration":
@@ -66,7 +67,6 @@ func main() {
 	flag.StringVar(&serverFlags.ImageSavePath, "image_save_path", models.Default_Image_Save_Path, "图片保存路径")
 	flag.StringVar(&serverFlags.ConfigFilePath, "config_file_path", models.Default_Config_File_Path, "配置文件路径")
 	flag.StringVar(&serverFlags.DataFilePath, "data_file_path", models.Default_Data_File_Path, "数据文件路径")
-	flag.StringVar(&serverFlags.StaticFilePath, "static_file_path", models.Default_Static_File_Path, "静态文件目录")
 	flag.IntVar(&serverFlags.Port, "server_port", models.Default_Server_Port, "服务端口")
 	flag.IntVar(&serverFlags.Limiter.Duration, "limiter_duration", models.Default_Limiter_Duartion, "限流时间窗口")
 	flag.IntVar(&serverFlags.Limiter.Requests, "limiter_requests", models.Default_Limiter_Requests, "限流请求数")

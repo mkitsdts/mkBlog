@@ -1,0 +1,6 @@
+.git
+build
+data
+frontend/dist
+frontend/node_modules
+static/dist

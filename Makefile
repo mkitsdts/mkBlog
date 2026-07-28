@@ -8,7 +8,7 @@ BIN_PATH := $(BIN_DIR)/$(APP_NAME)
 FRONTEND_DIR := $(ROOT_DIR)/frontend
 FRONTEND_DIST := $(FRONTEND_DIR)/dist
 STATIC_DIR := $(ROOT_DIR)/static
-STATIC_ASSETS_DIR := $(STATIC_DIR)/assets
+STATIC_DIST_DIR := $(STATIC_DIR)/dist
 DATA_DIR := $(ROOT_DIR)/data
 
 OS := $(shell uname -s)
@@ -22,7 +22,7 @@ help:
 	@echo "  build            Build backend, frontend, and sync static assets"
 	@echo "  backend-build    Build Go binary to build/bin/$(APP_NAME)"
 	@echo "  frontend-build   Install frontend deps and build Vite assets"
-	@echo "  sync-static      Copy frontend build output into static/"
+	@echo "  sync-static      Copy frontend dist directory into static/dist/"
 	@echo "  release          One-command release build + service install + start"
 	@echo "  release-install  Install service definition for Linux(systemd) or macOS(launchd)"
 	@echo "  release-start    Start registered service"
@@ -46,13 +46,13 @@ frontend-build:
 	cd "$(FRONTEND_DIR)" && npm install && npm run build
 
 sync-static:
-	@echo "Syncing frontend assets to static/..."
+	@echo "Syncing frontend dist directory to static/dist/..."
 	@test -d "$(FRONTEND_DIST)" || (echo "Missing frontend build output at $(FRONTEND_DIST). Run 'make frontend-build' first." && exit 1)
 	@mkdir -p "$(STATIC_DIR)"
-	@find "$(STATIC_DIR)" -mindepth 1 -maxdepth 1 ! -name 'icon.svg' -exec rm -rf {} +
-	cp -R "$(FRONTEND_DIST)/." "$(STATIC_DIR)/"
+	@rm -rf "$(STATIC_DIST_DIR)"
+	cp -R "$(FRONTEND_DIST)" "$(STATIC_DIST_DIR)"
 
-release-build: backend-build frontend-build sync-static
+release-build: frontend-build sync-static backend-build
 	@echo "Release build completed."
 
 release: release-build release-install release-start

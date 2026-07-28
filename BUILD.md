@@ -1,6 +1,4 @@
 # 构建插件
 npx vsce package
-# 构建前端
-npm run build
-# 构建后端
-go build
+# 构建单二进制（前端 -> static/dist -> Go）
+make build

@@ -51,7 +51,9 @@
 ├── frontend/              # Vue 前端
 ├── plugin/vscode/         # VS Code 上传插件
 ├── plugin/obsidian/       # Obsidian 上传插件
-├── static/                # 前端构建产物
+├── static/
+│   ├── embed.go           # 嵌入前端资源
+│   └── dist/              # 编译进 Go 二进制的前端构建产物
 ├── docker/                # Dockerfile
 └── data/                  # 运行时数据目录（首次启动自动生成）
 ```
@@ -60,8 +62,8 @@
 
 - 后端启动后会读取 `./data/config.yaml`
 - 如果配置文件不存在，程序会自动生成默认配置
-- 前端构建产物由后端统一静态托管
-- 图片默认保存在 `./data/static/images`
+- `static/dist/` 中的前端构建产物会编译进 Go 二进制，无需随程序部署
+- 图片默认保存在 `./data/img`
 - 空数据库会自动插入一篇 `Hello World` 示例文章
 
 ## 快速开始
@@ -74,12 +76,17 @@
 - MySQL 需要 ngram parser 才能获得更好的全文搜索效果
 - PostgreSQL 中文搜索需要 zhparser 扩展
 
-### 1. 构建并启动后端
+### 1. 构建并启动
+
+完整构建会先生成前端产物、同步到 `static/dist/`，再将其编译进单个 Go 二进制：
 
 ```bash
-go build -o mkBlog .
-./mkBlog
+make build
+./build/bin/mkBlog
 ```
+
+如果已经手动把完整的前端 `dist/` 文件夹放入 `static/`（最终路径为
+`static/dist/`），也可以直接执行 `make backend-build`。
 
 首次启动会自动生成：
 
@@ -116,7 +123,14 @@ npm install
 npm run build
 ```
 
-前端构建完成后，需要把产物复制到仓库根目录的 `static/` 下供后端托管。
+前端构建完成后，把完整的 `frontend/dist/` 文件夹放到仓库的
+`static/` 下，然后重新编译 Go 程序：
+
+```bash
+make sync-static backend-build
+```
+
+生成的 `build/bin/mkBlog` 已包含全部前端资源。
 
 ### 4. 访问项目
 

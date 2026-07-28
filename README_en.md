@@ -52,6 +52,8 @@ mkBlog is a minimalist personal blog system built with Go, Gin, GORM, Vue 3, and
 ├── plugin/vscode/
 ├── plugin/obsidian/
 ├── static/
+│   ├── embed.go           # Embeds frontend assets
+│   └── dist/              # Frontend build output embedded in the Go binary
 ├── docker/
 └── data/
 ```
@@ -60,8 +62,8 @@ mkBlog is a minimalist personal blog system built with Go, Gin, GORM, Vue 3, and
 
 - The server reads runtime config from `./data/config.yaml`
 - If the file does not exist, a default config is generated automatically
-- Frontend build assets are served by the Go backend
-- Images are stored under `./data/static/images`
+- Frontend assets in `static/dist/` are embedded in the Go binary and do not need to be deployed separately
+- Images are stored under `./data/img`
 - An empty database is initialized with a default `Hello World` article
 
 ## Quick Start
@@ -74,12 +76,18 @@ mkBlog is a minimalist personal blog system built with Go, Gin, GORM, Vue 3, and
 - MySQL with ngram parser for better full-text search
 - PostgreSQL with zhparser for Chinese full-text search
 
-### 1. Build and run the backend
+### 1. Build and run
+
+The full build creates the frontend output, syncs it to `static/dist/`, and then
+embeds it in a single Go executable:
 
 ```bash
-go build -o mkBlog .
-./mkBlog
+make build
+./build/bin/mkBlog
 ```
+
+If you already placed the complete frontend `dist/` directory under `static/`
+(at `static/dist/`), run `make backend-build` directly.
 
 On first start, mkBlog creates:
 
@@ -116,7 +124,14 @@ npm install
 npm run build
 ```
 
-After building, copy the frontend output into the root `static/` directory so it can be served by the backend.
+After building, place the complete `frontend/dist/` directory under `static/`,
+then rebuild the Go executable:
+
+```bash
+make sync-static backend-build
+```
+
+The resulting `build/bin/mkBlog` contains all frontend assets.
 
 ### 4. Open the site
 
