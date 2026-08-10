@@ -30,7 +30,7 @@ WORKDIR /app
 
 COPY --from=backend /app/main .
 
-EXPOSE 4801 8080
-EXPOSE 4802 6060
+EXPOSE 4801 4801
+EXPOSE 4802 4802
 
 CMD ["./main", "-data_path", "/etc/mkblog"]
