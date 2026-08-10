@@ -1,6 +1,7 @@
 package bloom
 
 import (
+	"log/slog"
 	"mkBlog/models"
 	"mkBlog/pkg/database"
 	"sync"
@@ -54,10 +55,10 @@ func Init() {
 	var titles []string
 	db := database.GetDatabase()
 	if db == nil {
-		println("bloom filter database error")
+		slog.Error("bloom filter database error")
 		return
 	}
-	println("bloom filter database ok")
+	slog.Error("bloom filter database ok")
 	database.GetDatabase().Model(models.ArticleDetail{}).Select("title").Find(&titles)
 	for _, title := range titles {
 		bf.Add([]byte(title))
