@@ -1,6 +1,6 @@
 {
   "name": "mkblog-obsidian-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "mkBlog management plugin for Obsidian: parse markdown header/frontmatter, upload file/folder with images, and delete remote articles.",
   "main": "main.js",
   "author": "mkitsdts",

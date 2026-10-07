@@ -11,6 +11,7 @@ import {
   FuzzySuggestModal,
   TFolder,
   normalizePath,
+  requireApiVersion,
 } from "obsidian";
 
 const VIEW_TYPE_MKBLOG = "mkblog-articles-view";
@@ -20,6 +21,10 @@ interface MkBlogSettings {
   defaultAuthor: string;
   defaultCategory: string;
   authToken: string;
+  /** 启动时自动打开管理视图（默认关闭，避免篡改用户的工作区布局） */
+  openViewOnStartup: boolean;
+  /** 启动时自动刷新文章列表（在布局就绪之后执行，不阻塞启动） */
+  refreshOnStartup: boolean;
 }
 
 interface RawArticle {
@@ -32,7 +37,12 @@ const DEFAULT_SETTINGS: MkBlogSettings = {
   defaultAuthor: "",
   defaultCategory: "General",
   authToken: "",
+  openViewOnStartup: false,
+  refreshOnStartup: true,
 };
+
+/** 单次请求超时时间。绝不允许请求无限期挂起，否则会拖死 Obsidian 启动流程。 */
+const REQUEST_TIMEOUT_MS = 15000;
 
 const IMG_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
 
@@ -136,8 +146,35 @@ function parseMeta(rawMd: string): {
   return { author, category, content };
 }
 
+function errText(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e ?? "未知错误");
+}
+
+/**
+ * 带超时的 fetch
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) {
+      throw new Error(`请求超时（${timeoutMs}ms）: ${url}`);
+    }
+    throw new Error(`请求失败: ${errText(e)} (${url})`);
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 async function reqJson(url: string, init?: RequestInit): Promise<any> {
-  const res = await fetch(url, init);
+  const res = await fetchWithTimeout(url, init);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
@@ -285,10 +322,10 @@ class MkBlogArticlesView extends ItemView {
     };
 
     this.listEl = this.contentEl.createDiv({ cls: "mkblog-list" });
-    await this.renderList();
+    this.renderList();
   }
 
-  async renderList(): Promise<void> {
+  renderList(): void {
     if (!this.listEl) return;
     this.listEl.empty();
 
@@ -320,64 +357,126 @@ class MkBlogArticlesView extends ItemView {
 }
 
 export default class MkBlogPlugin extends Plugin {
-  settings: MkBlogSettings = DEFAULT_SETTINGS;
+  settings: MkBlogSettings = { ...DEFAULT_SETTINGS };
   articles: RawArticle[] = [];
 
   async onload(): Promise<void> {
-    await this.loadSettings();
-
+    // ---------------------------------------------------------------------
+    // 1) 只做「同步注册」，且 registerView 必须是第一条语句。
+    //
+    // Obsidian 恢复工作区布局时，若某个 view type 还未注册，就会为该叶子
+    // 创建一个 EmptyView（保存到 workspace.json 后表现为
+    // "icon": "lucide-ghost"、"title": "mkblog-articles-view"）。
+    // 这个 ghost 叶子会被反复写回磁盘，于是每次启动都报视图/插件加载失败，
+    // 严重时直接卡住布局恢复，导致 Obsidian 需要以安全模式启动。
+    //
+    // 之前 registerView 之前有 `await this.loadSettings()`，注册被推迟到
+    // 一次磁盘 I/O 之后，存在恢复布局时仍未注册的竞态。
+    // ---------------------------------------------------------------------
     this.registerView(
       VIEW_TYPE_MKBLOG,
       (leaf) => new MkBlogArticlesView(leaf, this),
     );
+
     this.addSettingTab(new MkBlogSettingTab(this.app, this));
 
-    this.addRibbonIcon(
-      "cloud-upload",
-      "mkBlog: 上传当前文件为博客",
-      async () => {
-        await this.uploadCurrentFileAsBlog();
-      },
-    );
+    this.addRibbonIcon("cloud-upload", "mkBlog: 上传当前文件为博客", () => {
+      void this.uploadCurrentFileAsBlog();
+    });
 
     this.addCommand({
       id: "mkblog-open-view",
       name: "mkBlog: 打开管理视图",
-      callback: async () => this.activateView(),
+      callback: () => {
+        void this.activateView();
+      },
     });
 
     this.addCommand({
       id: "mkblog-upload-current-file",
       name: "mkBlog: 上传当前文件为博客",
-      callback: async () => this.uploadCurrentFileAsBlog(),
+      callback: () => {
+        void this.uploadCurrentFileAsBlog();
+      },
     });
 
     this.addCommand({
       id: "mkblog-upload-folder",
       name: "mkBlog: 上传选择文件夹为博客",
-      callback: async () => this.pickAndUploadFolder(),
+      callback: () => {
+        void this.pickAndUploadFolder();
+      },
     });
 
     this.addCommand({
       id: "mkblog-refresh-articles",
       name: "mkBlog: 刷新文章列表",
-      callback: async () => this.refreshArticles(),
+      callback: () => {
+        void this.refreshArticles();
+      },
     });
 
     this.addCommand({
       id: "mkblog-delete-article",
       name: "mkBlog: 删除文章",
-      callback: async () => this.pickAndDeleteArticle(),
+      callback: () => {
+        void this.pickAndDeleteArticle();
+      },
     });
 
-    await this.activateView();
-    await this.refreshArticles().catch((e) => {
-      console.error("[mkBlog] initial refresh failed", e);
-      new Notice(`mkBlog 初始化拉取文章失败: ${e?.message ?? e}`);
-    });
+    // ---------------------------------------------------------------------
+    // 2) 读取配置。这是 onload 中唯一的 I/O，且内部已 try/catch，
+    //    onload 永远不会 reject（以前 data.json 损坏会直接导致插件加载失败）。
+    // ---------------------------------------------------------------------
+    await this.loadSettings();
+
+    // ---------------------------------------------------------------------
+    // 3) 网络请求 / 工作区改动一律推迟到布局就绪之后。
+    //    官方文档明确要求 onload 不得做数据拉取；否则会显著拖慢甚至阻塞启动。
+    // ---------------------------------------------------------------------
+    if (this.app.workspace.layoutReady) {
+      void this.runStartupTasks();
+    } else {
+      this.app.workspace.onLayoutReady(() => {
+        void this.runStartupTasks();
+      });
+    }
   }
 
-  async onunload(): Promise<void> {
+  private async runStartupTasks(): Promise<void> {
+    try {
+      await this.healGhostLeaves();
+      if (this.settings.openViewOnStartup) {
+        await this.activateView();
+      }
+      if (this.settings.refreshOnStartup) {
+        await this.refreshArticles({ silent: true });
+      } else {
+        this.redrawViews();
+      }
+    } catch (e) {
+      console.error("[mkBlog] startup tasks failed", e);
+    }
+  }
+
+  /**
+   * 修复历史遗留的 ghost 叶子
+   */
+  private async healGhostLeaves(): Promise<void> {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MKBLOG)) {
+      if (leaf.view instanceof MkBlogArticlesView) continue;
+      if (requireApiVersion("1.7.2") && leaf.isDeferred) continue;
+      try {
+        await leaf.setViewState({ type: VIEW_TYPE_MKBLOG, active: false });
+        console.log("[mkBlog] repaired ghost view leaf");
+      } catch (e) {
+        console.error("[mkBlog] failed to repair ghost view leaf", e);
+      }
+    }
+  }
+
+  onunload(): void {
+    // 插件被禁用时清掉自己的叶子，避免留下无法解析的 ghost 视图。
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_MKBLOG);
   }
 
@@ -397,10 +496,6 @@ export default class MkBlogPlugin extends Plugin {
   }
 
   private async fileToArrayBuffer(vaultPath: string): Promise<ArrayBuffer> {
-    const abs = (this.app.vault.adapter as any).getFullPath?.(vaultPath);
-    if (abs && "requestUrl" in window === false) {
-      // fallback, but usually not needed
-    }
     return await this.app.vault.adapter.readBinary(vaultPath);
   }
 
@@ -471,41 +566,61 @@ export default class MkBlogPlugin extends Plugin {
     }));
   }
 
-  async refreshArticles(): Promise<void> {
+  /**
+   * 刷新文章列表。
+   *
+   * 不再向调用方抛出异常：命令 / Ribbon / 启动流程都会 invoke 它，
+   * 抛出会造成未处理的 Promise rejection（Obsidian 会当成插件报错）。
+   *
+   * @returns 成功时返回文章列表，失败时返回 null。
+   */
+  async refreshArticles(
+    opts: { silent?: boolean } = {},
+  ): Promise<RawArticle[] | null> {
     try {
       this.articles = await this.fetchArticles();
-      new Notice(`mkBlog: 已刷新，共 ${this.articles.length} 篇`);
-    } catch (e: any) {
-      new Notice(`mkBlog: 刷新失败 - ${e?.message ?? e}`);
-      throw e;
-    } finally {
-      this.redrawView();
+      this.redrawViews();
+      if (!opts.silent) {
+        new Notice(`mkBlog: 已刷新，共 ${this.articles.length} 篇`);
+      }
+      return this.articles;
+    } catch (e) {
+      if (opts.silent) {
+        console.error("[mkBlog] refresh failed", e);
+      } else {
+        new Notice(`mkBlog: 刷新失败 - ${errText(e)}`);
+      }
+      return null;
     }
   }
 
-  private redrawView(): void {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MKBLOG);
-    for (const leaf of leaves) {
-      const v = leaf.view;
-      if (v instanceof MkBlogArticlesView) {
-        v.renderList();
+  private redrawViews(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MKBLOG)) {
+      // Obsidian 1.7.2+ 的视图可能是 DeferredView，必须做 instanceof 判断
+      if (leaf.view instanceof MkBlogArticlesView) {
+        leaf.view.renderList();
       }
     }
   }
 
   async uploadCurrentFileAsBlog(): Promise<void> {
-    const file = this.app.workspace.getActiveFile();
-    if (!file) {
-      new Notice("请先打开一个 Markdown 文件");
-      return;
-    }
-    if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") {
-      new Notice("仅支持上传 Markdown 文件（.md）");
-      return;
-    }
+    try {
+      const file = this.app.workspace.getActiveFile();
+      if (!file) {
+        new Notice("请先打开一个 Markdown 文件");
+        return;
+      }
+      if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") {
+        new Notice("仅支持上传 Markdown 文件（.md）");
+        return;
+      }
 
-    await this.uploadSingleFile(file);
-    await this.refreshArticles().catch(() => {});
+      await this.uploadSingleFile(file);
+      await this.refreshArticles({ silent: true });
+    } catch (e) {
+      console.error("[mkBlog] upload current file failed", e);
+      new Notice(`上传失败: ${errText(e)}`);
+    }
   }
 
   private async uploadSingleFile(mdFile: TFile): Promise<void> {
@@ -561,9 +676,9 @@ export default class MkBlogPlugin extends Plugin {
     new FolderPickerModal(this.app, candidates, async (folder) => {
       try {
         await this.uploadFolderAsBlog(folder);
-        await this.refreshArticles().catch(() => {});
-      } catch (e: any) {
-        new Notice(`上传文件夹失败: ${e?.message ?? e}`);
+        await this.refreshArticles({ silent: true });
+      } catch (e) {
+        new Notice(`上传文件夹失败: ${errText(e)}`);
       }
     }).open();
   }
@@ -580,9 +695,9 @@ export default class MkBlogPlugin extends Plugin {
       try {
         await this.uploadSingleFile(md);
         success++;
-      } catch (e: any) {
+      } catch (e) {
         console.error(`[mkBlog] upload failed for ${md.path}`, e);
-        new Notice(`上传失败: ${md.path} - ${e?.message ?? e}`);
+        new Notice(`上传失败: ${md.path} - ${errText(e)}`);
       }
     }
 
@@ -605,7 +720,7 @@ export default class MkBlogPlugin extends Plugin {
 
   async pickAndDeleteArticle(): Promise<void> {
     if (!this.articles.length) {
-      await this.refreshArticles().catch(() => {});
+      await this.refreshArticles({ silent: true });
     }
     if (!this.articles.length) {
       new Notice("暂无可删除文章");
@@ -622,9 +737,9 @@ export default class MkBlogPlugin extends Plugin {
       try {
         await this.deleteArticleByTitle(item.title);
         new Notice(`删除成功：${item.title}`);
-        await this.refreshArticles().catch(() => {});
-      } catch (e: any) {
-        new Notice(`删除失败：${e?.message ?? e}`);
+        await this.refreshArticles({ silent: true });
+      } catch (e) {
+        new Notice(`删除失败：${errText(e)}`);
       }
     }).open();
   }
@@ -632,7 +747,7 @@ export default class MkBlogPlugin extends Plugin {
   async deleteArticleByTitle(title: string): Promise<void> {
     const baseUrl = this.ensureBaseUrl();
     const url = buildArticleEndpoint(baseUrl, title);
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "DELETE",
       headers: this.authHeaders(false),
     });
@@ -649,7 +764,10 @@ export default class MkBlogPlugin extends Plugin {
 
     if (!leaf) {
       leaf = workspace.getRightLeaf(false);
-      if (!leaf) return;
+      if (!leaf) {
+        new Notice("mkBlog: 无法创建视图（右侧栏不可用）");
+        return;
+      }
 
       await leaf.setViewState({
         type: VIEW_TYPE_MKBLOG,
@@ -657,12 +775,19 @@ export default class MkBlogPlugin extends Plugin {
       });
     }
 
-    workspace.revealLeaf(leaf);
+    await workspace.revealLeaf(leaf);
+    this.redrawViews();
   }
 
   async loadSettings(): Promise<void> {
-    const loaded = (await this.loadData()) as Partial<MkBlogSettings> | null;
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
+    try {
+      const loaded = (await this.loadData()) as Partial<MkBlogSettings> | null;
+      this.settings = { ...DEFAULT_SETTINGS, ...(loaded ?? {}) };
+    } catch (e) {
+      // data.json 损坏 / 不可读时退回默认值，绝不让 onload 因此 reject
+      console.error("[mkBlog] failed to load settings, falling back to defaults", e);
+      this.settings = { ...DEFAULT_SETTINGS };
+    }
   }
 
   async saveSettings(): Promise<void> {
@@ -730,6 +855,34 @@ class MkBlogSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.authToken)
           .onChange(async (value) => {
             this.plugin.settings.authToken = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    containerEl.createEl("h3", { text: "启动行为" });
+
+    new Setting(containerEl)
+      .setName("启动时自动打开管理视图")
+      .setDesc(
+        "关闭后仅在点击左侧 Ribbon 图标或执行命令时打开（推荐关闭，避免每次启动都改写你的工作区布局）",
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.openViewOnStartup)
+          .onChange(async (value) => {
+            this.plugin.settings.openViewOnStartup = value;
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("启动时自动刷新文章列表")
+      .setDesc("在 Obsidian 布局就绪后再发起请求，不会阻塞启动；请求带 15s 超时")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.refreshOnStartup)
+          .onChange(async (value) => {
+            this.plugin.settings.refreshOnStartup = value;
             await this.plugin.saveSettings();
           }),
       );

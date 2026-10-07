@@ -1,5 +1,6 @@
 import esbuild from "esbuild";
 import process from "process";
+import { copyFileSync, mkdirSync } from "node:fs";
 
 const isProd = process.argv.includes("--prod");
 const isWatch = process.argv.includes("--watch");
@@ -18,11 +19,19 @@ const context = await esbuild.context({
   external: ["obsidian", "electron", "@codemirror/*"],
 });
 
+// Obsidian 只认 manifest.json（缺少或文件名写错都会导致插件无法加载)
+function copyManifest() {
+  mkdirSync("build", { recursive: true });
+  copyFileSync("manifest.json", "build/manifest.json");
+}
+
 if (isWatch) {
   await context.watch();
+  copyManifest();
   console.log("[esbuild] watching...");
 } else {
   await context.rebuild();
+  copyManifest();
   await context.dispose();
   console.log("[esbuild] build complete");
 }

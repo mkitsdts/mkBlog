@@ -1,0 +1,10 @@
+{
+  "id": "mkBlog",
+  "name": "mkBlog-obsidian-plugin",
+  "version": "0.0.2",
+  "minAppVersion": "0.15.0",
+  "description": "Blog management plugin for Obsidian",
+  "author": "mkitsdts",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}

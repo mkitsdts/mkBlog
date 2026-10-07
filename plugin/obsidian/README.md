@@ -7,17 +7,26 @@
 - 解析 Markdown 头部元数据（Frontmatter）中的 `author` / `category`。
 - 单独上传当前 Markdown 文件（并自动上传同名图片文件夹中的图片）。
 - 单独上传指定文件夹中的所有 Markdown（并自动上传各自同名图片文件夹中的图片）。
-- 激活后自动拉取文章列表，在侧边栏管理视图中展示。
-- 支持在管理视图中删除远端文章。
+- 侧边栏管理视图中展示文章列表，支持删除远端文章。
+- 启动流程不与 Obsidian 布局恢复竞争：网络请求都在布局就绪后执行，且带 15s 超时。
 
 ---
 
 ## 安装（开发态）
 
-1. 将本插件目录放到你的 Vault 插件目录下，例如：
+1. 构建：
 
-```mkBlog/plugin/obsidian/README.md#L1-4
-<Vault>/.obsidian/plugins/mkblog-obsidian/
+```bash
+cd plugin/obsidian
+pnpm install
+pnpm build   # 生成 build/main.js 与 build/manifest.json
+```
+
+2. 把 `build/main.js` 与 `build/manifest.json` 复制到 Vault 插件目录。
+   目录名可以自定义，但清单文件必须叫 `manifest.json`（**不是** `mainifest.json`）：
+
+```
+<Vault>/.obsidian/plugins/mkblog/
   ├─ manifest.json
   ├─ main.js
   └─ styles.css (可选)
@@ -48,6 +57,11 @@
 - `Auth Token`（可选）
   - 若填写，会通过请求头发送：
     - `Authorization: Bearer <token>`
+- `启动时自动打开管理视图`（默认关闭）
+  - 关闭后仅在点击左侧 Ribbon 图标或执行命令时打开管理视图。
+  - 保持关闭可避免每次启动都往 `workspace.json` 写入新的视图叶子（推荐）。
+- `启动时自动刷新文章列表`（默认开启）
+  - 在 `workspace.onLayoutReady` 之后发起请求，不阻塞 Obsidian 启动。
 
 ---
 
@@ -55,7 +69,7 @@
 
 插件会优先读取文档开头的 Frontmatter：
 
-```mkBlog/plugin/obsidian/README.md#L1-7
+```
 ---
 author: mkitsdts
 category: language
@@ -81,7 +95,7 @@ category: language
 
 示例结构：
 
-```mkBlog/plugin/obsidian/README.md#L1-6
+```
 Notes/
   ├─ post.md
   └─ post/
@@ -130,7 +144,7 @@ Notes/
 - `PUT /api/article/:title`
 - JSON Body 示例：
 
-```mkBlog/plugin/obsidian/README.md#L1-8
+```
 {
   "title": "post",
   "author": "mkitsdts",
@@ -145,7 +159,7 @@ Notes/
 - `PUT /api/image`
 - JSON Body 示例：
 
-```mkBlog/plugin/obsidian/README.md#L1-6
+```
 {
   "title": "post",
   "name": "cover.png",
@@ -179,6 +193,26 @@ Notes/
 3. **删除失败**
    - 检查标题是否与后端记录一致（URL 编码由插件处理）
    - 检查认证 Token 是否有效
+4. **每次启动都提示插件/视图加载失败，偶尔 Obsidian 打不开、需要安全模式启动**
+   - 症状来源：`workspace.json` 中出现了 ghost 视图：
+
+     ```json
+     { "type": "leaf",
+       "state": { "type": "mkblog-articles-view", "state": {},
+                  "icon": "lucide-ghost", "title": "mkblog-articles-view" } }
+     ```
+
+     说明恢复布局时 `mkblog-articles-view` 这个 view type 尚未注册，
+     Obsidian 只能创建无法解析的占位视图，并把该状态反复写回磁盘。
+   - 0.0.2 已修复：`registerView()` 现在是 `onload()` 的第一条语句；
+     `onload()` 内不再做网络请求或工作区修改（改为在
+     `workspace.onLayoutReady()` 之后执行，并带超时）。
+   - 升级后重启 Obsidian 一次即可：ghost 叶子会被真实视图替换，
+     并重新写入正确的 `workspace.json`。
+   - 如需手动清理：完全退出 Obsidian 后备份并编辑
+     `<Vault>/.obsidian/workspace.json`，删除上述 leaf 节点。
+5. **确认插件是否拖慢了启动**
+   - `设置 -> 通用 -> 高级 -> 启动耗时调试` 查看各插件耗时。
 
 ---
 

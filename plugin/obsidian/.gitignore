@@ -1,2 +1,4 @@
-/build/
+/build/*
+!/build/main.js
+!/build/manifest.json
 /node_modules/
