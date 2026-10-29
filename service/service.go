@@ -132,8 +132,23 @@ func (s *BlogService) Start() error {
 	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
 	if config.Cfg.Server.HTTP3Enabled || config.Cfg.TLS.Enabled {
 		if err := tlscert.LoadCert(); err != nil {
-			return fmt.Errorf("load TLS cert: %w", err)
+			if !config.Cfg.CertControl.Enabled {
+				return fmt.Errorf("load TLS cert: %w", err)
+			}
+			// 首次部署时证书还不存在，先把服务跑起来，由 cert_control 签发后再加载。
+			slog.Warn("TLS certificate is not ready, the service will start and wait for cert_control to issue one",
+				"cert", config.Cfg.TLS.Cert, "key", config.Cfg.TLS.Key, "error", err)
+		} else {
+			slog.Info("TLS certificate loaded", "cert", config.Cfg.TLS.Cert)
 		}
+	}
+
+	if config.Cfg.CertControl.Enabled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tlscert.StartContext(ctx)
+		}()
 	}
 
 	if config.Cfg.Server.HTTP3Enabled {
@@ -167,14 +182,6 @@ func (s *BlogService) Start() error {
 				return err
 			})
 		}
-	}
-
-	if config.Cfg.CertControl.Enabled {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tlscert.StartContext(ctx)
-		}()
 	}
 
 	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
