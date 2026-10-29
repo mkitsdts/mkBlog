@@ -3,12 +3,11 @@ package tlscert
 import (
 	"context"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
+	"io/fs"
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
@@ -34,7 +33,7 @@ type MyUser struct {
 func (u *MyUser) GetEmail() string {
 	return u.Email
 }
-func (u MyUser) GetRegistration() *registration.Resource {
+func (u *MyUser) GetRegistration() *registration.Resource {
 	return u.Registration
 }
 func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
@@ -43,56 +42,98 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 
 var client *lego.Client
 var leuser MyUser
-var p challenge.Provider
 
 const (
 	renewalCheckInterval = 12 * time.Hour
 	renewalRetryInitial  = 6 * time.Hour
 	renewalRetryMax      = 24 * time.Hour
+
+	// 默认 30s 对 DNS-01 校验来说太短，超时后重试等于多下一单。
+	certificateTimeout = 5 * time.Minute
 )
 
+// Init 初始化 ACME 客户端。账号走落盘复用，只有确实没有账号时才注册，
+// 避免每次启动都消耗 Let's Encrypt 的“新账号”配额（按 IP 计算）。
+// 初始化失败时不会留下半初始化的 client，下一次 ensureClient 会重新初始化。
 func Init() error {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
+	if err := prepareAccount(); err != nil {
 		return err
 	}
-	leuser = MyUser{
-		Email: config.Cfg.CertControl.Email,
-		key:   privateKey,
-	}
+
 	newconfig := lego.NewConfig(&leuser)
 	newconfig.Certificate.KeyType = certcrypto.RSA2048
-	client, err = lego.NewClient(newconfig)
+	newconfig.Certificate.Timeout = certificateTimeout
+
+	newClient, err := lego.NewClient(newconfig)
+	if err != nil {
+		return fmt.Errorf("create ACME client: %w", err)
+	}
+
+	provider, err := newChallengeProvider()
 	if err != nil {
 		return err
 	}
+	if err := newClient.Challenge.SetDNS01Provider(provider); err != nil {
+		return fmt.Errorf("set dns01 provider: %w", err)
+	}
+
+	client = newClient
+	if err := ensureRegistration(); err != nil {
+		client = nil
+		return err
+	}
+	return nil
+}
+
+// prepareAccount 复用落盘的 ACME 账号，没有账号时才生成新私钥。
+func prepareAccount() error {
+	meta, key, err := loadAccount()
+	switch {
+	case err == nil:
+		leuser = MyUser{Email: meta.Email, key: key}
+		if meta.RegistrationURI != "" {
+			leuser.Registration = &registration.Resource{URI: meta.RegistrationURI}
+		}
+		if meta.Email != config.Cfg.CertControl.Email {
+			slog.Warn("stored ACME account email differs from configuration, keeping the stored account",
+				"account_email", meta.Email, "config_email", config.Cfg.CertControl.Email)
+		}
+		slog.Info("loaded existing ACME account", "email", leuser.Email, "uri", meta.RegistrationURI)
+	case errors.Is(err, fs.ErrNotExist):
+		newKey, err := newAccountKey()
+		if err != nil {
+			return fmt.Errorf("generate ACME account key: %w", err)
+		}
+		leuser = MyUser{Email: config.Cfg.CertControl.Email, key: newKey}
+	default:
+		return fmt.Errorf("load ACME account: %w", err)
+	}
+	return nil
+}
+
+func newChallengeProvider() (challenge.Provider, error) {
 	switch strings.ToLower(config.Cfg.CertControl.DomainProvider) {
 	case models.AliYun:
 		cfg := alidns.NewDefaultConfig()
 		cfg.APIKey = config.Cfg.CertControl.Key
 		cfg.SecretKey = config.Cfg.CertControl.Secret
-		if p, err = alidns.NewDNSProviderConfig(cfg); err != nil {
-			return err
+		provider, err := alidns.NewDNSProviderConfig(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("create alidns provider: %w", err)
 		}
+		return provider, nil
 	case models.TencentCloud:
 		cfg := tencentcloud.NewDefaultConfig()
 		cfg.SecretID = config.Cfg.CertControl.Key
 		cfg.SecretKey = config.Cfg.CertControl.Secret
-		if p, err = tencentcloud.NewDNSProviderConfig(cfg); err != nil {
-			return err
+		provider, err := tencentcloud.NewDNSProviderConfig(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("create tencentcloud provider: %w", err)
 		}
+		return provider, nil
 	default:
-		return errors.New("unsupported domain provider: " + config.Cfg.CertControl.DomainProvider)
+		return nil, errors.New("unsupported domain provider: " + config.Cfg.CertControl.DomainProvider)
 	}
-	if err := client.Challenge.SetDNS01Provider(p); err != nil {
-		return err
-	}
-	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
-	if err != nil {
-		return err
-	}
-	leuser.Registration = reg
-	return nil
 }
 
 func StartContext(ctx context.Context) {
