@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"mkBlog/config"
 	"mkBlog/models"
-	"os"
 	"strings"
 	"time"
 
@@ -193,7 +192,7 @@ func StartContext(ctx context.Context) {
 
 		// 先落盘尝试记录再发起申请：进程中途被 kill 也能保留现场并继续退避。
 		state = state.attempted(info, time.Now()).save()
-		if err := applyTLSCert(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
+		if err := obtainCertificate(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
 			state = state.failed(err, time.Now()).save()
 			slog.Error("failed to obtain TLS certificate",
 				"err", err, "consecutive_failures", state.ConsecutiveFails, "state_file", statePath())
@@ -249,25 +248,27 @@ func sleepContext(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-func applyTLSCert(keyPath, crtPath string) error {
+// obtainCertificate 向 ACME 服务器申请证书，并原子写入私钥与证书链。
+func obtainCertificate(keyPath, certPath string) error {
 	if client == nil {
 		return errors.New("lego client is not initialized, call Init() first")
 	}
+
 	request := certificate.ObtainRequest{
 		Domains: []string{config.Cfg.CertControl.Domain},
 		Bundle:  true,
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("obtain certificate for %s: %w", config.Cfg.CertControl.Domain, err)
 	}
 
-	if err = os.WriteFile(keyPath, certificates.PrivateKey, 0600); err != nil {
-		return err
+	// 写临时文件再 rename，避免进程崩溃时留下半截文件把下次启动搞挂。
+	if err := writeFileAtomic(keyPath, certificates.PrivateKey, 0600); err != nil {
+		return fmt.Errorf("write private key %s: %w", keyPath, err)
 	}
-	if err = os.WriteFile(crtPath, certificates.Certificate, 0644); err != nil {
-		slog.Error("Failed to write cert, ", "err: ", err)
-		return err
+	if err := writeFileAtomic(certPath, certificates.Certificate, 0644); err != nil {
+		return fmt.Errorf("write certificate %s: %w", certPath, err)
 	}
-	return err
+	return nil
 }

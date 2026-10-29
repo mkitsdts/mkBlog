@@ -86,7 +86,7 @@ func TestIntegrationObtainCertificate(t *testing.T) {
 	keyPath := filepath.Join(dir, "server.key")
 	certPath := filepath.Join(dir, "server.crt")
 
-	if err := applyTLSCert(keyPath, certPath); err != nil {
+	if err := obtainCertificate(keyPath, certPath); err != nil {
 		t.Fatalf("obtain certificate: %v", err)
 	}
 
