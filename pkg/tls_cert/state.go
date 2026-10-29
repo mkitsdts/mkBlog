@@ -173,9 +173,9 @@ func (s attemptState) attempted(info certInfo, now time.Time) attemptState {
 }
 
 func (s attemptState) failed(err error, now time.Time) attemptState {
-	if s.LastAttemptAt.IsZero() {
-		s.LastAttemptAt = now
-	}
+	// 失败本身也是一次尝试：必须把时间戳推进到当前时间，否则按旧的
+	// LastAttemptAt 算退避会得到负数，直接变成不停重试的死循环。
+	s.LastAttemptAt = now
 	s.ConsecutiveFails++
 	s.LastError = err.Error()
 	return s

@@ -270,3 +270,27 @@ func TestAttemptStatePersistence(t *testing.T) {
 }
 
 var errTest = errors.New("boom")
+
+// 反复失败必须让下一次尝试时间不断后移，否则会退化成不停申请的死循环。
+func TestAttemptStateFailureBackoffGrows(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	state := attemptState{LastAttemptAt: now.Add(-30 * 24 * time.Hour)}
+
+	previousWait := time.Duration(0)
+	for i := 1; i <= 3; i++ {
+		failedAt := now.Add(time.Duration(i) * time.Hour)
+		state = state.failed(errTest, failedAt)
+
+		wait := state.wait(failedAt)
+		if wait <= 0 {
+			t.Fatalf("attempt %d: wait = %s, want a positive backoff", i, wait)
+		}
+		if wait < previousWait {
+			t.Fatalf("attempt %d: wait = %s, should not shrink from %s", i, wait, previousWait)
+		}
+		if want := retryDelay(i); wait != want && want < renewalRetryMax {
+			t.Fatalf("attempt %d: wait = %s, want %s", i, wait, want)
+		}
+		previousWait = wait
+	}
+}
