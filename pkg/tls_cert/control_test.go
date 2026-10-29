@@ -10,10 +10,10 @@
 package tlscert
 
 import (
-	"crypto/tls"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"mkBlog/config"
 
@@ -90,7 +90,12 @@ func TestIntegrationObtainCertificate(t *testing.T) {
 		t.Fatalf("obtain certificate: %v", err)
 	}
 
-	if _, err := tls.LoadX509KeyPair(certPath, keyPath); err != nil {
-		t.Fatalf("load certificate: %v", err)
+	info, err := inspectTLSCert(certPath, keyPath, time.Now())
+	if err != nil {
+		t.Fatalf("inspect certificate: %v", err)
 	}
+	if info.State != CertValid {
+		t.Fatalf("expected a valid certificate, got %s", info.State)
+	}
+	t.Logf("certificate obtained for %v, not after %s", info.Domains, info.NotAfter)
 }

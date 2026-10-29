@@ -3,8 +3,6 @@ package tlscert
 import (
 	"context"
 	"crypto"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -140,13 +138,30 @@ func StartContext(ctx context.Context) {
 	retryDelay := renewalRetryInitial
 
 	for {
-		if !needRenew(config.Cfg.TLS.Cert) {
+		info, err := inspectTLSCert(config.Cfg.TLS.Cert, config.Cfg.TLS.Key, time.Now())
+		if err != nil {
+			// 证书文件读不了 / 解析不了 / 与私钥不匹配：重试签发没有意义，
+			// 只退避等待人工处理，绝不自动消耗签发配额。
+			slog.Error("TLS certificate is unusable, skip issuing a new one", "err", err)
+			if !sleepContext(ctx, retryDelay) {
+				return
+			}
+			retryDelay = nextRetryDelay(retryDelay)
+			continue
+		}
+
+		if info.State == CertValid {
 			retryDelay = renewalRetryInitial
+			slog.Info("TLS certificate is valid, no renewal needed",
+				"cert", config.Cfg.TLS.Cert, "not_after", info.NotAfter, "domains", info.Domains)
 			if !sleepContext(ctx, renewalCheckInterval) {
 				return
 			}
 			continue
 		}
+
+		slog.Info("TLS certificate needs to be issued",
+			"state", info.State.String(), "cert", config.Cfg.TLS.Cert, "not_after", info.NotAfter)
 
 		if err := ensureClient(); err != nil {
 			slog.Error("Failed to initialize certificate renewal", "err", err)
@@ -199,31 +214,6 @@ func sleepContext(ctx context.Context, d time.Duration) bool {
 	case <-timer.C:
 		return true
 	}
-}
-
-func needRenew(path string) bool {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		slog.Error("Failed to read cert file ", "err: ", err)
-		return true
-	}
-
-	block, _ := pem.Decode(data)
-	if block == nil || block.Type != "CERTIFICATE" {
-		slog.Error("invalied PEM cert")
-		return true
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		slog.Error("Failed to parse certficate ", "err: ", err)
-		return true
-	}
-
-	expiry := cert.NotAfter
-	remaining := time.Until(expiry)
-
-	return remaining < 14*24*time.Hour
 }
 
 func applyTLSCert(keyPath, crtPath string) error {
