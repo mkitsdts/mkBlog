@@ -135,23 +135,36 @@ func newChallengeProvider() (challenge.Provider, error) {
 }
 
 func StartContext(ctx context.Context) {
-	retryDelay := renewalRetryInitial
+	state := loadAttemptState()
 
 	for {
-		info, err := inspectTLSCert(config.Cfg.TLS.Cert, config.Cfg.TLS.Key, time.Now())
+		// 退避状态是落盘的：即使进程被重启过，也不会重新“立刻再申请一次”。
+		if wait := state.wait(time.Now()); wait > 0 {
+			slog.Warn("certificate issuance is backing off after a previous failure",
+				"retry_in", wait.Round(time.Second),
+				"consecutive_failures", state.ConsecutiveFails,
+				"last_attempt_at", state.LastAttemptAt,
+				"last_error", state.LastError)
+			if !sleepContext(ctx, wait) {
+				return
+			}
+		}
+
+		now := time.Now()
+		info, err := inspectTLSCert(config.Cfg.TLS.Cert, config.Cfg.TLS.Key, now)
 		if err != nil {
 			// 证书文件读不了 / 解析不了 / 与私钥不匹配：重试签发没有意义，
 			// 只退避等待人工处理，绝不自动消耗签发配额。
-			slog.Error("TLS certificate is unusable, skip issuing a new one", "err", err)
-			if !sleepContext(ctx, retryDelay) {
-				return
-			}
-			retryDelay = nextRetryDelay(retryDelay)
+			state = state.failed(err, now).save()
+			slog.Error("TLS certificate is unusable, refusing to request a new one automatically",
+				"err", err,
+				"hint", "fix the certificate/key files, or delete both of them to request a new pair",
+				"state_file", statePath())
 			continue
 		}
 
 		if info.State == CertValid {
-			retryDelay = renewalRetryInitial
+			state = state.healthy(info).save()
 			slog.Info("TLS certificate is valid, no renewal needed",
 				"cert", config.Cfg.TLS.Cert, "not_after", info.NotAfter, "domains", info.Domains)
 			if !sleepContext(ctx, renewalCheckInterval) {
@@ -164,26 +177,33 @@ func StartContext(ctx context.Context) {
 			"state", info.State.String(), "cert", config.Cfg.TLS.Cert, "not_after", info.NotAfter)
 
 		if err := ensureClient(); err != nil {
-			slog.Error("Failed to initialize certificate renewal", "err", err)
-			if !sleepContext(ctx, retryDelay) {
-				return
-			}
-			retryDelay = nextRetryDelay(retryDelay)
+			state = state.failed(err, time.Now()).save()
+			slog.Error("failed to initialize certificate renewal", "err", err)
 			continue
 		}
 
+		// 先落盘尝试记录再发起申请：进程中途被 kill 也能保留现场并继续退避。
+		state = state.attempted(info, time.Now()).save()
 		if err := applyTLSCert(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
-			if !sleepContext(ctx, retryDelay) {
-				return
-			}
-			retryDelay = nextRetryDelay(retryDelay)
+			state = state.failed(err, time.Now()).save()
+			slog.Error("failed to obtain TLS certificate",
+				"err", err, "consecutive_failures", state.ConsecutiveFails, "state_file", statePath())
 			continue
 		}
 
-		retryDelay = renewalRetryInitial
 		if err := updateCert(); err != nil {
-			slog.Error("Failed to reload renewed certificate", "err", err)
+			slog.Error("failed to reload renewed certificate", "err", err)
 		}
+
+		issued, inspectErr := inspectTLSCert(config.Cfg.TLS.Cert, config.Cfg.TLS.Key, time.Now())
+		if inspectErr != nil {
+			slog.Error("issued certificate is not usable, check the files on disk", "err", inspectErr)
+			issued = certInfo{}
+		}
+		state = state.succeeded(issued, time.Now()).save()
+		slog.Info("TLS certificate issued",
+			"not_after", issued.NotAfter, "domains", issued.Domains, "state_file", statePath())
+
 		if !sleepContext(ctx, renewalCheckInterval) {
 			return
 		}
@@ -197,12 +217,16 @@ func ensureClient() error {
 	return Init()
 }
 
-func nextRetryDelay(current time.Duration) time.Duration {
-	next := current * 2
-	if next > renewalRetryMax {
+// retryDelay 是失败后的指数退避：0 次失败从 renewalRetryInitial 开始，最多 renewalRetryMax。
+func retryDelay(failures int) time.Duration {
+	delay := renewalRetryInitial
+	for i := 0; i < failures && delay < renewalRetryMax; i++ {
+		delay *= 2
+	}
+	if delay > renewalRetryMax {
 		return renewalRetryMax
 	}
-	return next
+	return delay
 }
 
 func sleepContext(ctx context.Context, d time.Duration) bool {
@@ -226,12 +250,10 @@ func applyTLSCert(keyPath, crtPath string) error {
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		slog.Error("Failed to apply cert, ", "err: ", err)
 		return err
 	}
 
 	if err = os.WriteFile(keyPath, certificates.PrivateKey, 0600); err != nil {
-		slog.Error("Failed to write private_key, ", "err: ", err)
 		return err
 	}
 	if err = os.WriteFile(crtPath, certificates.Certificate, 0644); err != nil {

@@ -7,11 +7,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"mkBlog/config"
 )
 
 // writeTestCert 生成一对自签名证书与私钥，certNotAfter 控制证书有效期。
@@ -160,3 +163,110 @@ func TestInspectTLSCert(t *testing.T) {
 		})
 	}
 }
+
+func TestRetryDelay(t *testing.T) {
+	tests := []struct {
+		failures int
+		want     time.Duration
+	}{
+		{failures: 0, want: renewalRetryInitial},
+		{failures: 1, want: renewalRetryInitial * 2},
+		{failures: 2, want: renewalRetryMax},
+		{failures: 3, want: renewalRetryMax},
+		{failures: 100, want: renewalRetryMax},
+	}
+
+	for _, tt := range tests {
+		if got := retryDelay(tt.failures); got != tt.want {
+			t.Errorf("retryDelay(%d) = %s, want %s", tt.failures, got, tt.want)
+		}
+	}
+}
+
+func TestAttemptStateWait(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name  string
+		state attemptState
+		want  time.Duration
+	}{
+		{
+			name:  "never attempted",
+			state: attemptState{},
+			want:  0,
+		},
+		{
+			name:  "previous attempt is old enough",
+			state: attemptState{LastAttemptAt: now.Add(-renewalRetryInitial - time.Minute)},
+			want:  0,
+		},
+		{
+			name:  "previous attempt still in backoff",
+			state: attemptState{LastAttemptAt: now.Add(-time.Hour)},
+			want:  renewalRetryInitial - time.Hour,
+		},
+		{
+			name:  "failures double the backoff",
+			state: attemptState{LastAttemptAt: now.Add(-time.Hour), ConsecutiveFails: 1},
+			want:  renewalRetryInitial*2 - time.Hour,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.state.wait(now); got != tt.want {
+				t.Fatalf("wait = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAttemptStateTransitions(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	info := certInfo{State: CertExpiring, NotAfter: now.Add(24 * time.Hour)}
+
+	state := attemptState{}.attempted(info, now)
+	if !state.LastAttemptAt.Equal(now) || state.LastReason != "expiring" {
+		t.Fatalf("attempted state = %+v", state)
+	}
+
+	failed := state.failed(errTest, now.Add(time.Minute))
+	if failed.ConsecutiveFails != 1 || failed.LastError == "" {
+		t.Fatalf("failed state = %+v", failed)
+	}
+
+	issued := failed.succeeded(certInfo{NotAfter: now.Add(90 * 24 * time.Hour)}, now.Add(2*time.Minute))
+	if issued.ConsecutiveFails != 0 || issued.LastError != "" || !issued.LastSuccessAt.Equal(now.Add(2*time.Minute)) {
+		t.Fatalf("succeeded state = %+v", issued)
+	}
+
+	healthy := failed.healthy(info)
+	if healthy.ConsecutiveFails != 0 || healthy.LastError != "" {
+		t.Fatalf("healthy state = %+v", healthy)
+	}
+}
+
+func TestAttemptStatePersistence(t *testing.T) {
+	dataDir := t.TempDir()
+	originalDataPath := config.Cfg.Server.DataPath
+	config.Cfg.Server.DataPath = dataDir
+	t.Cleanup(func() { config.Cfg.Server.DataPath = originalDataPath })
+
+	if loaded := loadAttemptState(); !loaded.LastAttemptAt.IsZero() {
+		t.Fatalf("expected an empty state before saving, got %+v", loaded)
+	}
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	saved := attemptState{}.failed(errTest, now).save()
+
+	loaded := loadAttemptState()
+	if loaded.ConsecutiveFails != saved.ConsecutiveFails || loaded.LastError != saved.LastError {
+		t.Fatalf("loaded state = %+v, want %+v", loaded, saved)
+	}
+	if !loaded.LastAttemptAt.Equal(now) {
+		t.Fatalf("last attempt = %s, want %s", loaded.LastAttemptAt, now)
+	}
+}
+
+var errTest = errors.New("boom")

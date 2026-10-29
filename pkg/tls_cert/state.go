@@ -3,11 +3,14 @@ package tlscert
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -98,4 +101,97 @@ func firstCertificate(certPEM []byte) (*x509.Certificate, error) {
 		}
 		return x509.ParseCertificate(block.Bytes)
 	}
+}
+
+const stateFileName = "state.json"
+
+// attemptState 记录证书签发过程的时间线，落盘后有两个作用：
+//  1. 重启后继续退避，避免"重启一次就多申请一张证书"烧掉签发配额；
+//  2. 出事之后可以还原现场：上次申请是什么时候、为什么、连续失败几次。
+type attemptState struct {
+	LastAttemptAt    time.Time `json:"last_attempt_at,omitempty"`
+	LastSuccessAt    time.Time `json:"last_success_at,omitempty"`
+	LastCertNotAfter time.Time `json:"last_cert_not_after,omitempty"`
+	LastReason       string    `json:"last_reason,omitempty"`
+	ConsecutiveFails int       `json:"consecutive_failures"`
+	LastError        string    `json:"last_error,omitempty"`
+}
+
+func statePath() string {
+	return filepath.Join(acmeDir(), stateFileName)
+}
+
+// loadAttemptState 读取落盘的申请记录；读不出来时只告警，按零值处理。
+func loadAttemptState() attemptState {
+	raw, err := os.ReadFile(statePath())
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("failed to read certificate issuance state", "path", statePath(), "error", err)
+		}
+		return attemptState{}
+	}
+
+	var state attemptState
+	if err := json.Unmarshal(raw, &state); err != nil {
+		slog.Warn("failed to parse certificate issuance state", "path", statePath(), "error", err)
+		return attemptState{}
+	}
+	return state
+}
+
+// save 落盘当前状态，失败只告警：状态文件写不了不应该阻止证书续期。
+func (s attemptState) save() attemptState {
+	raw, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		slog.Warn("failed to encode certificate issuance state", "error", err)
+		return s
+	}
+	if err := writeFileAtomic(statePath(), append(raw, '\n'), 0600); err != nil {
+		slog.Warn("failed to save certificate issuance state", "path", statePath(), "error", err)
+	}
+	return s
+}
+
+// wait 返回距离下一次允许申请还要等多久；0 表示可以立即申请。
+func (s attemptState) wait(now time.Time) time.Duration {
+	if s.LastAttemptAt.IsZero() {
+		return 0
+	}
+	remaining := s.LastAttemptAt.Add(retryDelay(s.ConsecutiveFails)).Sub(now)
+	if remaining <= 0 {
+		return 0
+	}
+	return remaining
+}
+
+// attempted 在真正发起申请之前调用，先把时间点落盘。
+func (s attemptState) attempted(info certInfo, now time.Time) attemptState {
+	s.LastAttemptAt = now
+	s.LastReason = info.State.String()
+	s.LastCertNotAfter = info.NotAfter
+	return s
+}
+
+func (s attemptState) failed(err error, now time.Time) attemptState {
+	if s.LastAttemptAt.IsZero() {
+		s.LastAttemptAt = now
+	}
+	s.ConsecutiveFails++
+	s.LastError = err.Error()
+	return s
+}
+
+func (s attemptState) healthy(info certInfo) attemptState {
+	s.ConsecutiveFails = 0
+	s.LastError = ""
+	s.LastCertNotAfter = info.NotAfter
+	return s
+}
+
+func (s attemptState) succeeded(info certInfo, now time.Time) attemptState {
+	s = s.healthy(info)
+	s.LastAttemptAt = now
+	s.LastSuccessAt = now
+	s.LastReason = ""
+	return s
 }
