@@ -13,7 +13,7 @@ tls:
   key: server.key    # TLS密钥文件路径
 
 cert_control:
-  enabled: false                # 是否启用自动证书控制
+  enabled: false                # 是否启用自动证书控制。账号与签发记录会保存到 data/acme/
   email: 114514@colima.com      # 注册 Let's Encrypt 账号的邮箱
   domain: 114514.com            # 需要申请 TLS 证书的域名
   key:                          # 域名提供商的 API Key
