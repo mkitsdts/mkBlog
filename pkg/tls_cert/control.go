@@ -54,6 +54,9 @@ const (
 // 避免每次启动都消耗 Let's Encrypt 的“新账号”配额（按 IP 计算）。
 // 初始化失败时不会留下半初始化的 client，下一次 ensureClient 会重新初始化。
 func Init() error {
+	if err := Validate(); err != nil {
+		return err
+	}
 	if err := prepareAccount(); err != nil {
 		return err
 	}
@@ -177,6 +180,12 @@ func StartContext(ctx context.Context) {
 			"state", info.State.String(), "cert", config.Cfg.TLS.Cert, "not_after", info.NotAfter)
 
 		if err := ensureClient(); err != nil {
+			// 配置错了重试再多次也没用，直接 panic 让用户立刻看到问题。
+			var configErr *ConfigError
+			if errors.As(err, &configErr) {
+				slog.Error("cert_control is misconfigured, fix the configuration and restart", "err", err)
+				panic(configErr)
+			}
 			state = state.failed(err, time.Now()).save()
 			slog.Error("failed to initialize certificate renewal", "err", err)
 			continue

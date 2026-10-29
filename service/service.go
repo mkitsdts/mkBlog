@@ -85,6 +85,12 @@ func NewBlogService() (*BlogService, error) {
 }
 
 func (s *BlogService) Start() error {
+	if err := tlscert.Validate(); err != nil {
+		// 配置错误必须在启动时就暴露，不能等到续期时才在后台报错。
+		slog.Error("invalid certificate control configuration", "err", err)
+		panic(err)
+	}
+
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancelServices := context.WithCancel(signalCtx)
