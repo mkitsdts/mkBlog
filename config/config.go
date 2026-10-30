@@ -132,9 +132,7 @@ func Finalize() {
 
 	Cfg.Site.DevMode = Cfg.Server.Devmode
 
-	// 证书路径必须锚定到 data 目录：cert_control 单独开启时以前会写到进程
-	// 的工作目录，容器重建（工作目录不是挂载卷）后就被当成“没有证书”
-	// 重新申请一遍，白白消耗签发配额。
+	// 证书路径必须锚定到 data 目录
 	if Cfg.TLS.Enabled || Cfg.CertControl.Enabled {
 		Cfg.TLS.Cert = inDataPath(Cfg.TLS.Cert)
 		Cfg.TLS.Key = inDataPath(Cfg.TLS.Key)
@@ -143,7 +141,7 @@ func Finalize() {
 	slog.Info("Configuration loaded", "database", Cfg.Database, "tls", Cfg.TLS, "cert_control", Cfg.CertControl.Enabled, "auth_enabled", Cfg.Auth.Enabled, "server", Cfg.Server)
 }
 
-// inDataPath 把相对路径挂到 data 目录下，绝对路径保持不变。
+// 把相对路径挂到 data 目录下，绝对路径保持不变。
 func inDataPath(p string) string {
 	p = strings.TrimSpace(p)
 	if p == "" {

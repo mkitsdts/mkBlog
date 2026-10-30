@@ -44,14 +44,10 @@ const (
 	renewalCheckInterval = 12 * time.Hour
 	renewalRetryInitial  = 6 * time.Hour
 	renewalRetryMax      = 24 * time.Hour
-
-	// 默认 30s 对 DNS-01 校验来说太短，超时后重试等于多下一单。
-	certificateTimeout = 5 * time.Minute
+	certificateTimeout   = 5 * time.Minute
 )
 
-// Init 初始化 ACME 客户端。账号走落盘复用，只有确实没有账号时才注册，
-// 避免每次启动都消耗 Let's Encrypt 的“新账号”配额（按 IP 计算）。
-// 初始化失败时不会留下半初始化的 client，下一次 ensureClient 会重新初始化。
+// 初始化 ACME 客户端
 func Init() error {
 	if err := Validate(); err != nil {
 		return err
@@ -85,7 +81,7 @@ func Init() error {
 	return nil
 }
 
-// prepareAccount 复用落盘的 ACME 账号，没有账号时才生成新私钥。
+// 准备乐此加密的账号，没有账号时生成新私钥。
 func prepareAccount() error {
 	meta, key, err := loadAccount()
 	switch {
@@ -155,8 +151,7 @@ func StartContext(ctx context.Context) {
 		now := time.Now()
 		info, err := inspectTLSCert(config.Cfg.TLS.Cert, config.Cfg.TLS.Key, now)
 		if err != nil {
-			// 证书文件读不了 / 解析不了 / 与私钥不匹配：重试签发没有意义，
-			// 只退避等待人工处理，绝不自动消耗签发配额。
+			// 证书文件读不了 / 解析不了 / 与私钥不匹配：重试签发没有意义，退避等待人工处理
 			state = state.failed(err, now).save()
 			slog.Error("TLS certificate is unusable, refusing to request a new one automatically",
 				"err", err,

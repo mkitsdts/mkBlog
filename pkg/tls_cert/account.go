@@ -19,17 +19,14 @@ import (
 	"github.com/go-acme/lego/v4/registration"
 )
 
-// ACME 账号相关文件统一放在 <data>/acme 下。
-//
-// 账号必须落盘复用：Let's Encrypt 对“新账号注册”是按 IP 计数的
-// （每个 IP 每 3 小时 10 个），每次启动都注册新账号会被直接限流封禁。
+// ACME 账号相关文件统一放在 <data>/acme 下
 const (
 	acmeDirName         = "acme"
 	accountKeyFileName  = "account.key"
 	accountMetaFileName = "account.json"
 )
 
-// accountMeta 保存除私钥以外的账号信息，用于重启后直接拿到 kid。
+// 保存除私钥以外的账号信息，重启后可以直接拿到 kid
 type accountMeta struct {
 	Email           string `json:"email"`
 	RegistrationURI string `json:"registration_uri"`
@@ -47,8 +44,7 @@ func accountMetaPath() string {
 	return filepath.Join(acmeDir(), accountMetaFileName)
 }
 
-// loadAccount 读取已落盘的 ACME 账号。
-// 返回的错误满足 errors.Is(err, fs.ErrNotExist) 时表示还没有账号，需要注册。
+// 加载乐此加密的账号，返回 fs.ErrNotExist 时表示需要注册账号
 func loadAccount() (accountMeta, crypto.PrivateKey, error) {
 	keyPEM, err := os.ReadFile(accountKeyPath())
 	if err != nil {
@@ -63,8 +59,7 @@ func loadAccount() (accountMeta, crypto.PrivateKey, error) {
 	raw, err := os.ReadFile(accountMetaPath())
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		// 只有私钥也能恢复账号：用同一个 key 重新 newAccount 会返回已存在的账号，
-		// 这里先返回空 meta，由 ensureRegistration 补全并落盘。
+		// 返回私钥，后续可能恢复账号
 		return accountMeta{}, key, nil
 	case err != nil:
 		return accountMeta{}, nil, fmt.Errorf("read %s: %w", accountMetaPath(), err)
@@ -92,7 +87,6 @@ func newAccountKey() (crypto.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
-// saveAccount 落盘账号私钥与账号信息，保证下次启动复用同一个账号。
 func saveAccount(meta accountMeta, key crypto.PrivateKey) error {
 	keyDER, err := marshalAccountKey(key)
 	if err != nil {
@@ -120,7 +114,6 @@ func marshalAccountKey(key crypto.PrivateKey) ([]byte, error) {
 	return x509.MarshalPKCS8PrivateKey(key)
 }
 
-// ensureRegistration 保证 ACME 账号已注册并把账号信息落盘。
 func ensureRegistration() error {
 	if leuser.Registration != nil && leuser.Registration.URI != "" {
 		return nil

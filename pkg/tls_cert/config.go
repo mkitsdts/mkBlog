@@ -8,8 +8,7 @@ import (
 	"mkBlog/models"
 )
 
-// ConfigError 表示 cert_control 的配置本身有问题。
-// 这类错误重试多少次都不会变好，必须让用户看到并立刻改配置。
+// cert_control 的配置本身有问题时的错误
 type ConfigError struct {
 	Field  string
 	Reason string
@@ -19,8 +18,7 @@ func (e *ConfigError) Error() string {
 	return fmt.Sprintf("cert_control.%s: %s", e.Field, e.Reason)
 }
 
-// Validate 校验自动证书控制所需的配置。
-// 返回的错误可以通过 errors.As 取出 *ConfigError。
+// 校验自动证书控制所需的配置
 func Validate() error {
 	if !config.Cfg.CertControl.Enabled {
 		return nil

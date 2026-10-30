@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-// certNotLoadedWarnInterval 限制"证书还没准备好"日志的频率，
-// 否则每一个 TLS 握手都会刷一条。
+// "证书未准备"日志的频率
 const certNotLoadedWarnInterval = time.Minute
 
 var (
@@ -21,7 +20,6 @@ var (
 	lastWarnAt  time.Time
 )
 
-// LoadCert 从磁盘加载证书到内存。
 func LoadCert() error {
 	newCert, err := tls.LoadX509KeyPair(config.Cfg.TLS.Cert, config.Cfg.TLS.Key)
 	if err != nil {
@@ -33,8 +31,7 @@ func LoadCert() error {
 	return nil
 }
 
-// GetCurrentCert 是 tls.Config 的回调。证书还没准备好时返回错误，
-// 让握手失败但进程继续运行（首次部署时证书要等 cert_control 签发）。
+// 获取当前证书，证书没准备时返回错误，让握手失败但进程继续运行，等待 cert_control 签发
 func GetCurrentCert(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	certMux.RLock()
 	cert := currentCert
@@ -57,7 +54,6 @@ func warnCertNotLoaded() {
 		"cert", config.Cfg.TLS.Cert, "key", config.Cfg.TLS.Key)
 }
 
-// updateCert 在证书续期/签发成功后重新加载。
 func updateCert() error {
 	return LoadCert()
 }
