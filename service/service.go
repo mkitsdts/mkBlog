@@ -16,6 +16,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -85,6 +86,12 @@ func NewBlogService() (*BlogService, error) {
 }
 
 func (s *BlogService) Start() error {
+	if err := tlscert.Validate(); err != nil {
+		// 配置错误必须在启动时就暴露，不能等到续期时才在后台报错。
+		slog.Error("invalid certificate control configuration", "err", err)
+		panic(err)
+	}
+
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancelServices := context.WithCancel(signalCtx)
@@ -95,13 +102,11 @@ func (s *BlogService) Start() error {
 	shutdownFns := make([]func(context.Context) error, 0, 4)
 
 	startService := func(name string, serve func() error) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 				errCh <- fmt.Errorf("%s: %w", name, err)
 			}
-		}()
+		})
 	}
 
 	addShutdown := func(name string, shutdown func(context.Context) error) {
@@ -126,8 +131,21 @@ func (s *BlogService) Start() error {
 	addr := ":" + fmt.Sprint(config.Cfg.Server.Port)
 	if config.Cfg.Server.HTTP3Enabled || config.Cfg.TLS.Enabled {
 		if err := tlscert.LoadCert(); err != nil {
-			return fmt.Errorf("load TLS cert: %w", err)
+			if !config.Cfg.CertControl.Enabled {
+				return fmt.Errorf("load TLS cert: %w", err)
+			}
+			// 首次部署时证书还不存在，先把服务跑起来，由 cert_control 签发后再加载。
+			slog.Warn("TLS certificate is not ready, the service will start and wait for cert_control to issue one",
+				"cert", config.Cfg.TLS.Cert, "key", config.Cfg.TLS.Key, "error", err)
+		} else {
+			slog.Info("TLS certificate loaded", "cert", config.Cfg.TLS.Cert)
 		}
+	}
+
+	if config.Cfg.CertControl.Enabled {
+		wg.Go(func() {
+			tlscert.StartContext(ctx)
+		})
 	}
 
 	if config.Cfg.Server.HTTP3Enabled {
@@ -161,14 +179,6 @@ func (s *BlogService) Start() error {
 				return err
 			})
 		}
-	}
-
-	if config.Cfg.CertControl.Enabled {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tlscert.StartContext(ctx)
-		}()
 	}
 
 	// HTTP3 和 HTTP2 + TLS 是可以同时开启的， UDP 和 TCP 不冲突
@@ -212,7 +222,8 @@ func (s *BlogService) Start() error {
 	defer cancel()
 
 	var shutdownErr error
-	for i := len(shutdownFns) - 1; i >= 0; i-- {
+
+	for i := range slices.Backward(shutdownFns) {
 		if err := shutdownFns[i](shutdownCtx); err != nil {
 			slog.Error("failed to shutdown service", "error", err)
 			shutdownErr = errors.Join(shutdownErr, err)
