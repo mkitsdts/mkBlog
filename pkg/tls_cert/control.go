@@ -156,7 +156,7 @@ func StartContext(ctx context.Context) {
 			slog.Error("TLS certificate is unusable, refusing to request a new one automatically",
 				"err", err,
 				"hint", "fix the certificate/key files, or delete both of them to request a new pair",
-				"state_file", statePath())
+				"state_file", statePath)
 			continue
 		}
 
@@ -190,7 +190,7 @@ func StartContext(ctx context.Context) {
 		if err := obtainCertificate(config.Cfg.TLS.Key, config.Cfg.TLS.Cert); err != nil {
 			state = state.failed(err, time.Now()).save()
 			slog.Error("failed to obtain TLS certificate",
-				"err", err, "consecutive_failures", state.ConsecutiveFails, "state_file", statePath())
+				"err", err, "consecutive_failures", state.ConsecutiveFails, "state_file", statePath)
 			continue
 		}
 
@@ -205,7 +205,7 @@ func StartContext(ctx context.Context) {
 		}
 		state = state.succeeded(issued, time.Now()).save()
 		slog.Info("TLS certificate issued",
-			"not_after", issued.NotAfter, "domains", issued.Domains, "state_file", statePath())
+			"not_after", issued.NotAfter, "domains", issued.Domains, "state_file", statePath)
 
 		if !sleepContext(ctx, renewalCheckInterval) {
 			return

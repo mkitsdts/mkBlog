@@ -26,48 +26,42 @@ const (
 	accountMetaFileName = "account.json"
 )
 
+var (
+	acmeDir         = filepath.Join(config.Cfg.Server.DataPath, acmeDirName)
+	accountKeyPath  = filepath.Join(acmeDir, accountKeyFileName)
+	accountMetaPath = filepath.Join(acmeDir, accountMetaFileName)
+)
+
 // 保存除私钥以外的账号信息，重启后可以直接拿到 kid
 type accountMeta struct {
 	Email           string `json:"email"`
 	RegistrationURI string `json:"registration_uri"`
 }
 
-func acmeDir() string {
-	return filepath.Join(config.Cfg.Server.DataPath, acmeDirName)
-}
-
-func accountKeyPath() string {
-	return filepath.Join(acmeDir(), accountKeyFileName)
-}
-
-func accountMetaPath() string {
-	return filepath.Join(acmeDir(), accountMetaFileName)
-}
-
 // 加载乐此加密的账号，返回 fs.ErrNotExist 时表示需要注册账号
 func loadAccount() (accountMeta, crypto.PrivateKey, error) {
-	keyPEM, err := os.ReadFile(accountKeyPath())
+	keyPEM, err := os.ReadFile(accountKeyPath)
 	if err != nil {
 		return accountMeta{}, nil, err
 	}
 
 	key, err := parseAccountKey(keyPEM)
 	if err != nil {
-		return accountMeta{}, nil, fmt.Errorf("parse %s: %w", accountKeyPath(), err)
+		return accountMeta{}, nil, fmt.Errorf("parse %s: %w", accountKeyPath, err)
 	}
 
-	raw, err := os.ReadFile(accountMetaPath())
+	raw, err := os.ReadFile(accountMetaPath)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		// 返回私钥，后续可能恢复账号
 		return accountMeta{}, key, nil
 	case err != nil:
-		return accountMeta{}, nil, fmt.Errorf("read %s: %w", accountMetaPath(), err)
+		return accountMeta{}, nil, fmt.Errorf("read %s: %w", accountMetaPath, err)
 	}
 
 	var meta accountMeta
 	if err := json.Unmarshal(raw, &meta); err != nil {
-		return accountMeta{}, nil, fmt.Errorf("parse %s: %w", accountMetaPath(), err)
+		return accountMeta{}, nil, fmt.Errorf("parse %s: %w", accountMetaPath, err)
 	}
 	return meta, key, nil
 }
@@ -93,7 +87,7 @@ func saveAccount(meta accountMeta, key crypto.PrivateKey) error {
 		return err
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-	if err := writeFileAtomic(accountKeyPath(), keyPEM, 0600); err != nil {
+	if err := writeFileAtomic(accountKeyPath, keyPEM, 0600); err != nil {
 		return fmt.Errorf("save ACME account key: %w", err)
 	}
 
@@ -101,7 +95,7 @@ func saveAccount(meta accountMeta, key crypto.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	if err := writeFileAtomic(accountMetaPath(), append(raw, '\n'), 0600); err != nil {
+	if err := writeFileAtomic(accountMetaPath, append(raw, '\n'), 0600); err != nil {
 		return fmt.Errorf("save ACME account metadata: %w", err)
 	}
 	return nil

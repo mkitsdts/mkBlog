@@ -16,6 +16,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -101,13 +102,11 @@ func (s *BlogService) Start() error {
 	shutdownFns := make([]func(context.Context) error, 0, 4)
 
 	startService := func(name string, serve func() error) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 				errCh <- fmt.Errorf("%s: %w", name, err)
 			}
-		}()
+		})
 	}
 
 	addShutdown := func(name string, shutdown func(context.Context) error) {
@@ -144,11 +143,9 @@ func (s *BlogService) Start() error {
 	}
 
 	if config.Cfg.CertControl.Enabled {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			tlscert.StartContext(ctx)
-		}()
+		})
 	}
 
 	if config.Cfg.Server.HTTP3Enabled {
@@ -225,7 +222,8 @@ func (s *BlogService) Start() error {
 	defer cancel()
 
 	var shutdownErr error
-	for i := len(shutdownFns) - 1; i >= 0; i-- {
+
+	for i := range slices.Backward(shutdownFns) {
 		if err := shutdownFns[i](shutdownCtx); err != nil {
 			slog.Error("failed to shutdown service", "error", err)
 			shutdownErr = errors.Join(shutdownErr, err)

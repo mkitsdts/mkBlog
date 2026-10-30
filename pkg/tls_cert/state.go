@@ -113,24 +113,22 @@ type attemptState struct {
 	LastError        string    `json:"last_error,omitempty"`
 }
 
-func statePath() string {
-	return filepath.Join(acmeDir(), stateFileName)
-}
+var statePath = filepath.Join(acmeDir, stateFileName)
 
 // 读取落盘申请记录
 func loadAttemptState() attemptState {
-	raw, err := os.ReadFile(statePath())
+	raw, err := os.ReadFile(statePath)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			// 读不出来落盘申请记录时告警，按零值处理
-			slog.Warn("failed to read certificate issuance state", "path", statePath(), "error", err)
+			slog.Warn("failed to read certificate issuance state", "path", statePath, "error", err)
 		}
 		return attemptState{}
 	}
 
 	var state attemptState
 	if err := json.Unmarshal(raw, &state); err != nil {
-		slog.Warn("failed to parse certificate issuance state", "path", statePath(), "error", err)
+		slog.Warn("failed to parse certificate issuance state", "path", statePath, "error", err)
 		return attemptState{}
 	}
 	return state
@@ -144,9 +142,9 @@ func (s attemptState) save() attemptState {
 		slog.Warn("failed to encode certificate issuance state", "error", err)
 		return s
 	}
-	if err := writeFileAtomic(statePath(), append(raw, '\n'), 0600); err != nil {
+	if err := writeFileAtomic(statePath, append(raw, '\n'), 0600); err != nil {
 		// 状态文件写不了不应该阻止证书续期
-		slog.Warn("failed to save certificate issuance state", "path", statePath(), "error", err)
+		slog.Warn("failed to save certificate issuance state", "path", statePath, "error", err)
 	}
 	return s
 }

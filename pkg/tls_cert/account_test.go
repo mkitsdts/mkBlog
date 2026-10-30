@@ -40,7 +40,7 @@ func TestAccountPersistence(t *testing.T) {
 	}
 
 	// 账号信息丢了也要能用同一把私钥找回账号，不能直接当成“没有账号”去注册新的。
-	if err := os.Remove(accountMetaPath()); err != nil {
+	if err := os.Remove(accountMetaPath); err != nil {
 		t.Fatalf("remove account metadata: %v", err)
 	}
 	meta, recoveredKey, err := loadAccount()
